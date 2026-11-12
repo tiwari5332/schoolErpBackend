@@ -1,117 +1,123 @@
-import { Request, Response, NextFunction } from 'express';
+import {
+  Controller,
+  Post,
+  Get,
+  Put,
+  Body,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { ApiResponse } from '../../utils/response';
+import { Endpoint } from '../../contract/endpoint.decorator';
+import { CurrentUser, CurrentUserPayload } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/public.decorator';
+import {
+  LoginSchema,
+  RefreshTokenSchema,
+  LogoutSchema,
+  ForgotPasswordSchema,
+  ResetPasswordSchema,
+  ChangePasswordSchema,
+  UpdateProfileSchema,
+  LoginDto,
+  RefreshTokenDto,
+  LogoutDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+  ChangePasswordDto,
+  UpdateProfileDto,
+} from './dto/auth.dto';
+import { DomainError } from '../../common/domain.error';
 
+function validate<T>(schema: any, data: unknown): T {
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    const details = result.error.errors.map((e: any) => ({
+      field: e.path.join('.'),
+      message: e.message,
+    }));
+    throw new DomainError('VALIDATION_ERROR', 'Validation failed', details);
+  }
+  return result.data as T;
+}
+
+@Controller()
 export class AuthController {
-  static async registerSchool(req: Request, res: Response, next: NextFunction) {
-    try {
-      const result = await AuthService.registerSchool(req.body);
-      return ApiResponse.success(res, result, 201);
-    } catch (err) {
-      next(err);
-    }
+  constructor(private readonly authService: AuthService) {}
+
+  @Public()
+  @Endpoint('AUTH_LOGIN')
+  @Post('/auth/login')
+  @HttpCode(HttpStatus.OK)
+  async login(@Body() body: unknown) {
+    const dto = validate<LoginDto>(LoginSchema, body);
+    return this.authService.login(dto);
   }
 
-  static async adminLogin(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { email, msisdn, mobileNo, phone, username, password, deviceId } = req.body;
-      const identifier = email || msisdn || mobileNo || phone || username;
-      const result = await AuthService.adminLogin(identifier, password, deviceId);
-      return ApiResponse.success(res, result);
-    } catch (err) {
-      next(err);
-    }
+  @Public()
+  @Endpoint('AUTH_REFRESH')
+  @Post('/auth/refresh')
+  @HttpCode(HttpStatus.OK)
+  async refresh(@Body() body: unknown) {
+    const dto = validate<RefreshTokenDto>(RefreshTokenSchema, body);
+    return this.authService.refresh(dto);
   }
 
-  static async teacherLogin(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { employeeCode, schoolId, password, deviceId } = req.body;
-      const result = await AuthService.teacherLogin(employeeCode, schoolId, password, deviceId);
-      return ApiResponse.success(res, result);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('AUTH_LOGOUT')
+  @Post('/auth/logout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async logout(
+    @Body() body: unknown,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    const dto = validate<LogoutDto>(LogoutSchema, body || {});
+    await this.authService.logout(dto, user?.userId);
   }
 
-  static async parentLogin(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = (req.query.schoolId as string) || req.body.schoolId;
-      const msisdn = (req.query.msisdn as string) || req.body.msisdn;
-      const { password, deviceId } = req.body;
-      const result = await AuthService.parentLogin(schoolId, msisdn, password, deviceId);
-      return ApiResponse.success(res, result);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('AUTH_ME')
+  @Get('/auth/me')
+  async me(@CurrentUser() user: CurrentUserPayload) {
+    return this.authService.me(user.userId, user.tenantId);
   }
 
-  static async getParentSchools(req: Request, res: Response, next: NextFunction) {
-    try {
-      const msisdn = req.query.msisdn as string;
-      const result = await AuthService.getParentSchools(msisdn);
-      return ApiResponse.success(res, result);
-    } catch (err) {
-      next(err);
-    }
+  @Public()
+  @Endpoint('AUTH_FORGOT_PASSWORD')
+  @Post('/auth/forgot-password')
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(@Body() body: unknown) {
+    const dto = validate<ForgotPasswordDto>(ForgotPasswordSchema, body);
+    return this.authService.forgotPassword(dto);
   }
 
-  static async userSignup(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { msisdn, actorType } = req.body;
-      const result = await AuthService.userSignup(msisdn, actorType);
-      return ApiResponse.success(res, result);
-    } catch (err) {
-      next(err);
-    }
+  @Public()
+  @Endpoint('AUTH_RESET_PASSWORD')
+  @Post('/auth/reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body() body: unknown) {
+    const dto = validate<ResetPasswordDto>(ResetPasswordSchema, body);
+    return this.authService.resetPassword(dto);
   }
 
-  static async createPassword(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { signupToken, newPassword } = req.body;
-      const result = await AuthService.createPassword(signupToken, newPassword);
-      return ApiResponse.success(res, result);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('AUTH_CHANGE_PASSWORD')
+  @Post('/auth/change-password')
+  @HttpCode(HttpStatus.OK)
+  async changePassword(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() body: unknown,
+  ) {
+    const dto = validate<ChangePasswordDto>(ChangePasswordSchema, body);
+    return this.authService.changePassword(user.userId, dto);
   }
 
-  static async sendOtp(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { msisdn, purpose } = req.body;
-      const result = await AuthService.sendOtp(msisdn, purpose);
-      return ApiResponse.success(res, result);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  static async verifyOtp(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { msisdn, purpose, otpCode } = req.body;
-      const result = await AuthService.verifyOtp(msisdn, purpose, otpCode);
-      return ApiResponse.success(res, result);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  static async forgotPassword(req: Request, res: Response, next: NextFunction) {
-    try {
-      const email = req.query.email as string || req.body.email;
-      const mobileNo = req.query.mobileNo as string || req.body.mobileNo;
-      const result = await AuthService.forgotPassword(email, mobileNo);
-      return ApiResponse.success(res, result);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  static async resetPassword(req: Request, res: Response, next: NextFunction) {
-    try {
-      const result = await AuthService.resetPassword(req.body);
-      return ApiResponse.success(res, result);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('AUTH_UPDATE_PROFILE')
+  @Put('/auth/profile')
+  @HttpCode(HttpStatus.OK)
+  async updateProfile(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() body: unknown,
+  ) {
+    const dto = validate<UpdateProfileDto>(UpdateProfileSchema, body);
+    return this.authService.updateProfile(user.userId, dto);
   }
 }
+

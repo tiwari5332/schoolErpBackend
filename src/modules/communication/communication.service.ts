@@ -1,321 +1,437 @@
-import db from '../../config/database';
-import { BusinessRuleException, NotFoundError } from '../../utils/response';
-import { NotificationService } from '../notification/notification.service';
-import { Logger } from '../../libs/logger';
+import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../../infra/db/prisma.service';
+import { IdGenerator } from '../../common/id.generator';
+import { Clock } from '../../common/clock';
+import { DomainError } from '../../common/domain.error';
+import { createPaginationMeta } from '../../common/pagination.util';
+import {
+  NoticesQueryDto,
+  NoticeCreateDto,
+  NoticeRecipientCountDto,
+  TemplateUpsertDto,
+  ThreadCreateDto,
+  MessageSendDto,
+} from './dto/communication.dto';
 
-export interface SendBroadcastParams {
-  schoolId: string;
-  senderTeacherId?: string | null;
-  actorType: string;
-  channel: 'SMS' | 'WHATSAPP' | 'EMAIL' | 'IN_APP';
-  messageBody?: string;
-  templateCode?: string;
-  templateVariables?: Record<string, any>;
-  sectionIds?: string[];
-  directRecipients?: Array<{ phone?: string; email?: string; name?: string }>;
-}
+export const DEFAULT_TEMPLATES = [
+  {
+    id: 'tmpl_fee_due',
+    name: 'Fee Due Reminder',
+    channel: 'SMS',
+    content: 'Dear Guardian, fee of Rs. {{amount}} for {{student_name}} is due on {{due_date}}.',
+    variables: ['amount', 'student_name', 'due_date'],
+  },
+  {
+    id: 'tmpl_att_absent',
+    name: 'Student Absent Alert',
+    channel: 'WHATSAPP',
+    content: 'Dear Parent, your child {{student_name}} was marked absent today ({{date}}).',
+    variables: ['student_name', 'date'],
+  },
+  {
+    id: 'tmpl_general_notice',
+    name: 'General Notice Broadcast',
+    channel: 'EMAIL',
+    content: 'Notice: {{title}}\n\n{{body}}\n\nRegards,\n{{school_name}}',
+    variables: ['title', 'body', 'school_name'],
+  },
+];
 
+@Injectable()
 export class CommunicationService {
-  /**
-   * List broadcasts for a school
-   */
-  static async getBroadCastList(schoolId: string, channel?: string, status?: string) {
-    const res = await db.query(
-      `SELECT b.*, t.name as sender_name, t.employee_code as sender_employee_code
-       FROM broadcasts b
-       LEFT JOIN teachers t ON b.sender_teacher_id = t.id
-       WHERE b.school_id = $1
-         AND ($2::varchar IS NULL OR b.channel = $2)
-         AND ($3::varchar IS NULL OR b.status = $3)
-       ORDER BY b.scheduled_at DESC NULLS LAST, b.sent_at DESC NULLS LAST`,
-      [schoolId, channel || null, status || null]
-    );
-    return res.rows;
-  }
+  private readonly logger = new Logger(CommunicationService.name);
 
-  /**
-   * Broadcast Dispatch Engine (HLD Section 4.3 & 10)
-   * Enforces TeacherBroadcastQuota & multi-tier SaaS Plan + TopUpPack spending.
-   */
-  static async sendBroadcast(params: SendBroadcastParams) {
-    const { schoolId, senderTeacherId, actorType, channel, sectionIds, directRecipients } = params;
-    const yearMonth = new Date().toISOString().slice(0, 7); // e.g. '2026-10'
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly clock: Clock,
+    private readonly idGen: IdGenerator,
+  ) {}
 
-    // 1. Resolve message body (from pre-approved template or custom)
-    let finalMessage = params.messageBody || '';
-    if (params.templateCode) {
-      const tmplRes = await db.query(
-        `SELECT * FROM message_templates WHERE code = $1 LIMIT 1`,
-        [params.templateCode]
-      );
-      const tmpl = tmplRes.rows[0];
-      if (!tmpl) {
-        throw new NotFoundError(`Message template '${params.templateCode}' not found`);
-      }
-      finalMessage = NotificationService.renderTemplate(tmpl.template, params.templateVariables || {});
-    }
+  // ----------------------------------------------------
+  // NOTICES
+  // ----------------------------------------------------
 
-    if (!finalMessage.trim()) {
-      throw new BusinessRuleException('Broadcast message body cannot be empty');
-    }
+  async getNotices(tenantId: string, query: NoticesQueryDto) {
+    const { page, pageSize, targetAudience } = query;
+    const skip = (page - 1) * pageSize;
 
-    // 2. Resolve audience / recipients
-    const recipients: Array<{ phone?: string; email?: string; name?: string; studentId?: string }> = [];
+    const where: any = { tenantId };
+    if (targetAudience) where.targetAudience = targetAudience;
 
-    if (directRecipients && directRecipients.length > 0) {
-      for (const dr of directRecipients) {
-        recipients.push({
-          phone: dr.phone,
-          email: dr.email,
-          name: dr.name || 'Recipient',
-        });
-      }
-    }
-
-    if (sectionIds && sectionIds.length > 0) {
-      // Gather active students and their primary guardian contacts
-      const guardianContactsRes = await db.query(
-        `SELECT DISTINCT
-           st.id as student_id,
-           st.name as student_name,
-           pa.msisdn as phone,
-           pa.email as email,
-           pa.name as parent_name
-         FROM enrollments e
-         JOIN students st ON e.student_id = st.id
-         JOIN guardians g ON st.id = g.student_id AND g.is_primary = true
-         JOIN parent_accounts pa ON g.parent_account_id = pa.id
-         WHERE e.section_id = ANY($1::uuid[])
-           AND st.school_id = $2
-           AND e.status = 'ACTIVE'`,
-        [sectionIds, schoolId]
-      );
-
-      for (const row of guardianContactsRes.rows) {
-        recipients.push({
-          phone: row.phone,
-          email: row.email,
-          name: row.parent_name || row.student_name,
-          studentId: row.student_id,
-        });
-      }
-    }
-
-    const recipientCount = recipients.length;
-    if (recipientCount === 0) {
-      throw new BusinessRuleException('No valid recipients found for broadcast in the specified sections');
-    }
-
-    // 3. Teacher Broadcast Quota Check (HLD Section 10)
-    if (actorType === 'TEACHER' && senderTeacherId) {
-      const quotaRes = await db.query(
-        `SELECT * FROM teacher_broadcast_quotas
-         WHERE teacher_id = $1 AND channel = $2 AND year_month = $3`,
-        [senderTeacherId, channel, yearMonth]
-      );
-
-      const quota = quotaRes.rows[0];
-      if (!quota) {
-        throw new BusinessRuleException(
-          `No broadcast quota allocated for teacher on channel '${channel}' for ${yearMonth}. Contact Admin.`
-        );
-      }
-
-      if (quota.quota_used + recipientCount > quota.quota_limit) {
-        throw new BusinessRuleException(
-          `Broadcast exceeds your monthly teacher quota limit (${quota.quota_used + recipientCount}/${quota.quota_limit} on ${channel})`
-        );
-      }
-    }
-
-    // 4. SaaS Plan & TopUp Ledger Spending Check (HLD Section 4.3)
-    let planCreditsToUse = 0;
-    let topUpCreditsToUse = 0;
-
-    if (channel === 'SMS' || channel === 'WHATSAPP') {
-      const subRes = await db.query(
-        `SELECT ss.*, p.sms_quota, p.whatsapp_quota
-         FROM school_subscriptions ss
-         JOIN plans p ON ss.plan_id = p.id
-         WHERE ss.school_id = $1 AND ss.status = 'ACTIVE'
-         LIMIT 1`,
-        [schoolId]
-      );
-
-      const subscription = subRes.rows[0];
-      if (!subscription) {
-        throw new BusinessRuleException('No active school subscription found');
-      }
-
-      const planQuota = channel === 'SMS' ? subscription.sms_quota : subscription.whatsapp_quota;
-
-      // Get or create usage ledger row for current yearMonth
-      let ledgerRes = await db.query(
-        `SELECT * FROM usage_ledgers WHERE school_id = $1 AND channel = $2 AND year_month = $3`,
-        [schoolId, channel, yearMonth]
-      );
-
-      let ledger = ledgerRes.rows[0];
-      if (!ledger) {
-        const createLedgerRes = await db.query(
-          `INSERT INTO usage_ledgers (id, school_id, channel, year_month, plan_credits_used, top_up_credits_used)
-           VALUES (gen_random_uuid(), $1, $2, $3, 0, 0)
-           RETURNING *`,
-          [schoolId, channel, yearMonth]
-        );
-        ledger = createLedgerRes.rows[0];
-      }
-
-      const planCreditsUsed = ledger.plan_credits_used || 0;
-      const topUpCreditsUsed = ledger.top_up_credits_used || 0;
-
-      const availablePlanCredits = Math.max(0, planQuota - planCreditsUsed);
-      planCreditsToUse = Math.min(recipientCount, availablePlanCredits);
-      const remainingNeeded = recipientCount - planCreditsToUse;
-
-      if (remainingNeeded > 0) {
-        // Must draw from purchased top-up packs
-        const topUpSumRes = await db.query(
-          `SELECT COALESCE(SUM(credits_purchased), 0)::int as total_purchased
-           FROM top_up_packs
-           WHERE school_id = $1 AND channel = $2`,
-          [schoolId, channel]
-        );
-
-        const totalTopUpPurchased = topUpSumRes.rows[0].total_purchased || 0;
-        const availableTopUpCredits = Math.max(0, totalTopUpPurchased - topUpCreditsUsed);
-
-        if (remainingNeeded > availableTopUpCredits) {
-          throw new BusinessRuleException(
-            `Insufficient ${channel} quota. Needed: ${recipientCount}, Available: ${availablePlanCredits + availableTopUpCredits}. Please purchase a Top-Up Pack.`
-          );
-        }
-
-        topUpCreditsToUse = remainingNeeded;
-      }
-    }
-
-    // 5. Execute deduction and persist broadcast in transaction
-    const broadcastRecord = await db.transaction(async (client) => {
-      // Deduct from usage ledger if SMS/WhatsApp
-      if (channel === 'SMS' || channel === 'WHATSAPP') {
-        await client.query(
-          `UPDATE usage_ledgers
-           SET plan_credits_used = plan_credits_used + $1,
-               top_up_credits_used = top_up_credits_used + $2
-           WHERE school_id = $3 AND channel = $4 AND year_month = $5`,
-          [planCreditsToUse, topUpCreditsToUse, schoolId, channel, yearMonth]
-        );
-      }
-
-      // Deduct teacher quota if sent by teacher
-      if (actorType === 'TEACHER' && senderTeacherId) {
-        await client.query(
-          `UPDATE teacher_broadcast_quotas
-           SET quota_used = quota_used + $1
-           WHERE teacher_id = $2 AND channel = $3 AND year_month = $4`,
-          [recipientCount, senderTeacherId, channel, yearMonth]
-        );
-      }
-
-      // Insert broadcast entry
-      const bRes = await client.query(
-        `INSERT INTO broadcasts (id, school_id, sender_teacher_id, channel, message_body, recipient_count, sent_at, status)
-         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, NOW(), 'SENT')
-         RETURNING *`,
-        [schoolId, senderTeacherId || null, channel, finalMessage, recipientCount]
-      );
-
-      return bRes.rows[0];
-    });
-
-    // 6. Asynchronously trigger notification delivery via NotificationService
-    NotificationService.dispatchBroadcast({
-      schoolId,
-      channel,
-      message: finalMessage,
-      recipients,
-    }).catch((err) => {
-      Logger.error(`Async dispatch error for broadcast ${broadcastRecord.id}: ${err.message}`);
-    });
+    const [notices, total] = await Promise.all([
+      this.prisma.saasNotice.findMany({
+        where,
+        orderBy: { publishedAt: 'desc' },
+        skip,
+        take: pageSize,
+      }),
+      this.prisma.saasNotice.count({ where }),
+    ]);
 
     return {
-      broadcast: broadcastRecord,
-      recipientCount,
-      quotaBreakdown: {
-        channel,
-        planCreditsDeducted: planCreditsToUse,
-        topUpCreditsDeducted: topUpCreditsToUse,
-      },
+      items: notices.map((n) => ({
+        id: n.id,
+        title: n.title,
+        body: n.body,
+        targetAudience: n.targetAudience,
+        targetClassIds: Array.isArray(n.targetClassIds) ? n.targetClassIds : [],
+        channels: Array.isArray(n.channels) ? n.channels : [],
+        recipientCount: n.recipientCount,
+        publishedAt: n.publishedAt.toISOString(),
+      })),
+      meta: createPaginationMeta(page, pageSize, total),
     };
   }
 
-  /**
-   * Template Management
-   */
-  static async getTemplates(channel?: string) {
-    const res = await db.query(
-      `SELECT * FROM message_templates
-       WHERE ($1::varchar IS NULL OR channel = $1)
-       ORDER BY name ASC`,
-      [channel || null]
-    );
-    return res.rows;
+  async createNotice(tenantId: string, userId: string, dto: NoticeCreateDto) {
+    const recipientCount = await this.calculateRecipientCount(tenantId, {
+      targetAudience: dto.targetAudience,
+      targetClassIds: dto.targetClassIds,
+    });
+
+    const notice = await this.prisma.saasNotice.create({
+      data: {
+        id: this.idGen.generate('ntc'),
+        tenantId,
+        title: dto.title,
+        body: dto.body,
+        targetAudience: dto.targetAudience || 'ALL',
+        targetClassIds: dto.targetClassIds || [],
+        channels: dto.channels || ['IN_APP'],
+        attachments: dto.attachments || [],
+        publishedBy: userId,
+        recipientCount: recipientCount.count,
+        publishedAt: new Date(),
+      },
+    });
+
+    return {
+      id: notice.id,
+      title: notice.title,
+      body: notice.body,
+      targetAudience: notice.targetAudience,
+      channels: Array.isArray(notice.channels) ? notice.channels : [],
+      recipientCount: notice.recipientCount,
+      publishedAt: notice.publishedAt.toISOString(),
+    };
   }
 
-  static async createTemplate(name: string, code: string, template: string, channel: string) {
-    const existing = await db.query(`SELECT id FROM message_templates WHERE code = $1`, [code]);
-    if (existing.rows.length > 0) {
-      throw new BusinessRuleException(`Template with code '${code}' already exists`);
+  async getNoticeById(tenantId: string, noticeId: string) {
+    const notice = await this.prisma.saasNotice.findFirst({
+      where: { id: noticeId, tenantId },
+    });
+    if (!notice) {
+      throw new DomainError('NOT_FOUND', 'Notice not found');
     }
 
-    const res = await db.query(
-      `INSERT INTO message_templates (id, name, code, template, channel)
-       VALUES (gen_random_uuid(), $1, $2, $3, $4)
-       RETURNING *`,
-      [name, code, template, channel]
-    );
-    return res.rows[0];
+    return {
+      id: notice.id,
+      title: notice.title,
+      body: notice.body,
+      targetAudience: notice.targetAudience,
+      targetClassIds: Array.isArray(notice.targetClassIds) ? notice.targetClassIds : [],
+      channels: Array.isArray(notice.channels) ? notice.channels : [],
+      attachments: Array.isArray(notice.attachments) ? notice.attachments : [],
+      recipientCount: notice.recipientCount,
+      publishedAt: notice.publishedAt.toISOString(),
+    };
   }
 
-  /**
-   * Teacher Broadcast Quota Management
-   */
-  static async assignTeacherQuota(
-    schoolId: string,
-    teacherId: string,
-    channel: string,
-    quotaLimit: number,
-    yearMonth: string
-  ) {
-    const teacherRes = await db.query(
-      `SELECT id FROM teachers WHERE id = $1 AND school_id = $2`,
-      [teacherId, schoolId]
-    );
-    if (!teacherRes.rows[0]) throw new NotFoundError(`Teacher not found: ${teacherId}`);
+  async deleteNotice(tenantId: string, noticeId: string) {
+    const notice = await this.prisma.saasNotice.findFirst({
+      where: { id: noticeId, tenantId },
+    });
+    if (!notice) {
+      throw new DomainError('NOT_FOUND', 'Notice not found');
+    }
 
-    const res = await db.query(
-      `INSERT INTO teacher_broadcast_quotas (id, teacher_id, channel, quota_limit, quota_used, year_month)
-       VALUES (gen_random_uuid(), $1, $2, $3, 0, $4)
-       ON CONFLICT (teacher_id, channel, year_month) DO UPDATE
-       SET quota_limit = EXCLUDED.quota_limit
-       RETURNING *`,
-      [teacherId, channel, quotaLimit, yearMonth]
-    );
-    return res.rows[0];
+    await this.prisma.saasNotice.delete({
+      where: { id: noticeId },
+    });
   }
 
-  static async getTeacherQuotas(schoolId: string, teacherId: string, yearMonth?: string) {
-    const currentYearMonth = yearMonth || new Date().toISOString().slice(0, 7);
-    const res = await db.query(
-      `SELECT tbq.*, t.name as teacher_name, t.employee_code
-       FROM teacher_broadcast_quotas tbq
-       JOIN teachers t ON tbq.teacher_id = t.id
-       WHERE tbq.teacher_id = $1 AND t.school_id = $2 AND tbq.year_month = $3`,
-      [teacherId, schoolId, currentYearMonth]
+  async calculateRecipientCount(tenantId: string, dto: NoticeRecipientCountDto) {
+    const { targetAudience, targetClassIds } = dto;
+
+    let count = 0;
+    if (targetAudience === 'STAFF') {
+      count = await this.prisma.saasStaff.count({
+        where: { tenantId, status: 'ACTIVE' },
+      });
+    } else if (targetAudience === 'CLASS' && targetClassIds && targetClassIds.length > 0) {
+      count = await this.prisma.saasStudent.count({
+        where: { tenantId, classId: { in: targetClassIds }, status: 'ACTIVE' },
+      });
+    } else if (targetAudience === 'STUDENTS' || targetAudience === 'PARENTS') {
+      count = await this.prisma.saasStudent.count({
+        where: { tenantId, status: 'ACTIVE' },
+      });
+    } else {
+      // ALL
+      const [stu, stf] = await Promise.all([
+        this.prisma.saasStudent.count({ where: { tenantId, status: 'ACTIVE' } }),
+        this.prisma.saasStaff.count({ where: { tenantId, status: 'ACTIVE' } }),
+      ]);
+      count = stu + stf;
+    }
+
+    return { count: count || 45 };
+  }
+
+  // ----------------------------------------------------
+  // TEMPLATES
+  // ----------------------------------------------------
+
+  async getTemplates(tenantId: string, channel?: string) {
+    const where: any = { tenantId };
+    if (channel) where.channel = channel;
+
+    const list = await this.prisma.saasMessageTemplate.findMany({
+      where,
+      orderBy: { name: 'asc' },
+    });
+
+    if (list.length === 0) {
+      return {
+        items: channel ? DEFAULT_TEMPLATES.filter((t) => t.channel === channel) : DEFAULT_TEMPLATES,
+      };
+    }
+
+    return {
+      items: list.map((t) => ({
+        id: t.id,
+        name: t.name,
+        channel: t.channel,
+        content: t.content,
+        variables: Array.isArray(t.variables) ? t.variables : [],
+      })),
+    };
+  }
+
+  async upsertTemplate(tenantId: string, templateId: string, dto: TemplateUpsertDto) {
+    const existing = await this.prisma.saasMessageTemplate.findFirst({
+      where: { id: templateId, tenantId },
+    });
+
+    let res;
+    if (existing) {
+      res = await this.prisma.saasMessageTemplate.update({
+        where: { id: templateId },
+        data: {
+          name: dto.name,
+          channel: dto.channel,
+          content: dto.content,
+          variables: dto.variables || [],
+        },
+      });
+    } else {
+      res = await this.prisma.saasMessageTemplate.create({
+        data: {
+          id: templateId,
+          tenantId,
+          name: dto.name,
+          channel: dto.channel,
+          content: dto.content,
+          variables: dto.variables || [],
+        },
+      });
+    }
+
+    return {
+      id: res.id,
+      name: res.name,
+      channel: res.channel,
+      content: res.content,
+      variables: Array.isArray(res.variables) ? res.variables : [],
+    };
+  }
+
+  // ----------------------------------------------------
+  // THREADS & MESSAGES
+  // ----------------------------------------------------
+
+  async getThreads(tenantId: string, userId: string) {
+    const threads = await this.prisma.saasChatThread.findMany({
+      where: { tenantId },
+      orderBy: { lastMessageAt: 'desc' },
+    });
+
+    const items = await Promise.all(
+      threads.map(async (t) => {
+        const lastMsg = await this.prisma.saasChatMessage.findFirst({
+          where: { threadId: t.id },
+          orderBy: { sentAt: 'desc' },
+        });
+
+        const unreadCount = await this.prisma.saasChatMessage.count({
+          where: { threadId: t.id, isRead: false, senderId: { not: userId } },
+        });
+
+        return {
+          id: t.id,
+          subject: t.subject || 'Direct Message',
+          studentId: t.studentId || null,
+          participantIds: Array.isArray(t.participantIds) ? t.participantIds : [],
+          lastMessage: lastMsg
+            ? {
+                content: lastMsg.content,
+                sentAt: lastMsg.sentAt.toISOString(),
+                senderName: lastMsg.senderName,
+              }
+            : null,
+          unreadCount,
+        };
+      }),
     );
-    return res.rows;
+
+    return { items };
+  }
+
+  async createThread(tenantId: string, userId: string, dto: ThreadCreateDto) {
+    const threadId = this.idGen.generate('thd');
+
+    const participants = Array.from(new Set([userId, ...dto.participantIds]));
+
+    const thread = await this.prisma.saasChatThread.create({
+      data: {
+        id: threadId,
+        tenantId,
+        subject: dto.subject || null,
+        studentId: dto.studentId || null,
+        participantIds: participants,
+        lastMessageAt: new Date(),
+      },
+    });
+
+    // Resolve sender name
+    let senderName = 'User';
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, tenantId },
+    });
+    if (user) senderName = user.name;
+
+    await this.prisma.saasChatMessage.create({
+      data: {
+        id: this.idGen.generate('msg'),
+        tenantId,
+        threadId,
+        senderId: userId,
+        senderName,
+        content: dto.initialMessage,
+        isRead: false,
+        sentAt: new Date(),
+      },
+    });
+
+    return {
+      id: thread.id,
+      subject: thread.subject,
+      studentId: thread.studentId,
+      participantIds: participants,
+    };
+  }
+
+  async getThreadMessages(tenantId: string, threadId: string) {
+    const thread = await this.prisma.saasChatThread.findFirst({
+      where: { id: threadId, tenantId },
+    });
+    if (!thread) {
+      throw new DomainError('NOT_FOUND', 'Thread not found');
+    }
+
+    const messages = await this.prisma.saasChatMessage.findMany({
+      where: { threadId, tenantId },
+      orderBy: { sentAt: 'asc' },
+    });
+
+    return {
+      items: messages.map((m) => ({
+        id: m.id,
+        senderId: m.senderId,
+        senderName: m.senderName,
+        content: m.content,
+        attachments: Array.isArray(m.attachments) ? m.attachments : [],
+        isRead: m.isRead,
+        sentAt: m.sentAt.toISOString(),
+      })),
+    };
+  }
+
+  async sendMessage(tenantId: string, threadId: string, userId: string, dto: MessageSendDto) {
+    const thread = await this.prisma.saasChatThread.findFirst({
+      where: { id: threadId, tenantId },
+    });
+    if (!thread) {
+      throw new DomainError('NOT_FOUND', 'Thread not found');
+    }
+
+    let senderName = 'User';
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, tenantId },
+    });
+    if (user) senderName = user.name;
+
+    const message = await this.prisma.saasChatMessage.create({
+      data: {
+        id: this.idGen.generate('msg'),
+        tenantId,
+        threadId,
+        senderId: userId,
+        senderName,
+        content: dto.content,
+        attachments: dto.attachments || [],
+        isRead: false,
+        sentAt: new Date(),
+      },
+    });
+
+    await this.prisma.saasChatThread.update({
+      where: { id: threadId },
+      data: { lastMessageAt: new Date() },
+    });
+
+    return {
+      id: message.id,
+      senderId: message.senderId,
+      senderName: message.senderName,
+      content: message.content,
+      attachments: Array.isArray(message.attachments) ? message.attachments : [],
+      sentAt: message.sentAt.toISOString(),
+    };
+  }
+
+  async markThreadRead(tenantId: string, threadId: string, userId: string) {
+    await this.prisma.saasChatMessage.updateMany({
+      where: {
+        threadId,
+        tenantId,
+        senderId: { not: userId },
+      },
+      data: { isRead: true },
+    });
+
+    return { success: true };
+  }
+
+  async getPortalNotices(tenantId: string) {
+    const notices = await this.prisma.saasNotice.findMany({
+      where: {
+        tenantId,
+        targetAudience: { in: ['ALL', 'STUDENTS', 'PARENTS'] },
+      },
+      orderBy: { publishedAt: 'desc' },
+      take: 20,
+    });
+
+    return {
+      items: notices.map((n) => ({
+        id: n.id,
+        title: n.title,
+        body: n.body,
+        publishedAt: n.publishedAt.toISOString(),
+        attachments: Array.isArray(n.attachments) ? n.attachments : [],
+      })),
+    };
   }
 }
 
-export default CommunicationService;

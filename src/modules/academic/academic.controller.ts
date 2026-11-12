@@ -1,352 +1,210 @@
-import { Request, Response, NextFunction } from 'express';
-import { getTenantSchoolId } from '../../middleware/tenant.middleware';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { AcademicService } from './academic.service';
-import { ApiResponse } from '../../utils/response';
+import { Endpoint } from '../../contract/endpoint.decorator';
+import { CurrentUser, CurrentUserPayload } from '../../common/decorators/current-user.decorator';
+import {
+  SessionCreateSchema,
+  SessionRolloverSchema,
+  ClassCreateSchema,
+  ClassUpdateSchema,
+  SubjectCreateSchema,
+  SubjectUpdateSchema,
+  ClassSubjectsAssignSchema,
+  GradeScaleUpsertSchema,
+  SessionCreateDto,
+  SessionRolloverDto,
+  ClassCreateDto,
+  ClassUpdateDto,
+  SubjectCreateDto,
+  SubjectUpdateDto,
+  ClassSubjectsAssignDto,
+  GradeScaleUpsertDto,
+} from './dto/academic.dto';
+import { DomainError } from '../../common/domain.error';
 
+function validate<T>(schema: any, data: unknown): T {
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    const details = result.error.errors.map((e: any) => ({
+      field: e.path.join('.'),
+      message: e.message,
+    }));
+    throw new DomainError('VALIDATION_ERROR', 'Validation failed', details);
+  }
+  return result.data as T;
+}
+
+@Controller()
 export class AcademicController {
-  // Academic Years
-  static async getAcademicYears(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const years = await AcademicService.getAcademicYears(schoolId);
-      return ApiResponse.success(res, years);
-    } catch (err) {
-      next(err);
-    }
+  constructor(private readonly academicService: AcademicService) {}
+
+  // ----------------------------------------------------
+  // SESSIONS
+  // ----------------------------------------------------
+
+  @Endpoint('SESSIONS_LIST')
+  @Get('/academic/sessions')
+  async getSessions(@CurrentUser() user: CurrentUserPayload) {
+    return this.academicService.getSessions(user.tenantId);
   }
 
-  static async getActiveAcademicYear(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const activeYear = await AcademicService.getActiveAcademicYear(schoolId);
-      return ApiResponse.success(res, activeYear);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('SESSION_CREATE')
+  @Post('/academic/sessions')
+  @HttpCode(HttpStatus.CREATED)
+  async createSession(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() body: unknown,
+  ) {
+    const dto = validate<SessionCreateDto>(SessionCreateSchema, body);
+    return this.academicService.createSession(user.tenantId, dto);
   }
 
-  static async getAcademicYearById(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const year = await AcademicService.getAcademicYearById(schoolId, req.params.id);
-      return ApiResponse.success(res, year);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('SESSION_ACTIVATE')
+  @Post('/academic/sessions/:sessionId/activate')
+  @HttpCode(HttpStatus.OK)
+  async activateSession(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('sessionId') sessionId: string,
+  ) {
+    return this.academicService.activateSession(user.tenantId, sessionId);
   }
 
-  static async createAcademicYear(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const year = await AcademicService.createAcademicYear(schoolId, {
-        name: req.body.name,
-        startDate: new Date(req.body.startDate),
-        endDate: new Date(req.body.endDate),
-        status: req.body.status,
-      });
-      return ApiResponse.success(res, year, 201);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('SESSION_ROLLOVER')
+  @Post('/academic/sessions/:sessionId/rollover')
+  @HttpCode(HttpStatus.OK)
+  async rolloverSession(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('sessionId') sessionId: string,
+    @Body() body: unknown,
+  ) {
+    const dto = validate<SessionRolloverDto>(SessionRolloverSchema, body);
+    return this.academicService.rolloverSession(user.tenantId, sessionId, dto);
   }
 
-  static async updateAcademicYear(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const year = await AcademicService.updateAcademicYear(schoolId, req.params.id, {
-        name: req.body.name,
-        startDate: req.body.startDate ? new Date(req.body.startDate) : undefined,
-        endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
-        status: req.body.status,
-      });
-      return ApiResponse.success(res, year);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('SESSION_LOCK')
+  @Post('/academic/sessions/:sessionId/lock')
+  @HttpCode(HttpStatus.OK)
+  async lockSession(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('sessionId') sessionId: string,
+  ) {
+    return this.academicService.lockSession(user.tenantId, sessionId);
   }
 
-  static async activateAcademicYear(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const year = await AcademicService.activateAcademicYear(schoolId, req.params.id);
-      return ApiResponse.success(res, year);
-    } catch (err) {
-      next(err);
-    }
+  // ----------------------------------------------------
+  // CLASSES & SECTIONS
+  // ----------------------------------------------------
+
+  @Endpoint('CLASSES_LIST')
+  @Get('/academic/classes')
+  async getClasses(@CurrentUser() user: CurrentUserPayload) {
+    return this.academicService.getClasses(user.tenantId);
   }
 
-  static async closeAcademicYear(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const year = await AcademicService.closeAcademicYear(schoolId, req.params.id);
-      return ApiResponse.success(res, year);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('CLASS_CREATE')
+  @Post('/academic/classes')
+  @HttpCode(HttpStatus.CREATED)
+  async createClass(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() body: unknown,
+  ) {
+    const dto = validate<ClassCreateDto>(ClassCreateSchema, body);
+    return this.academicService.createClass(user.tenantId, dto);
   }
 
-  // Grades
-  static async getGrades(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const grades = await AcademicService.getGrades(schoolId);
-      return ApiResponse.success(res, grades);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('CLASS_UPDATE')
+  @Put('/academic/classes/:classId')
+  async updateClass(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('classId') classId: string,
+    @Body() body: unknown,
+  ) {
+    const dto = validate<ClassUpdateDto>(ClassUpdateSchema, body);
+    return this.academicService.updateClass(user.tenantId, classId, dto);
   }
 
-  static async createGrade(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const { name, sequenceOrder, sections, academicYearId } = req.body;
-      const grade = await AcademicService.createGrade(
-        schoolId,
-        name,
-        sequenceOrder,
-        sections,
-        academicYearId
-      );
-      return ApiResponse.success(res, grade, 201);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('CLASS_DELETE')
+  @Delete('/academic/classes/:classId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteClass(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('classId') classId: string,
+  ) {
+    await this.academicService.deleteClass(user.tenantId, classId);
   }
 
-  static async updateGrade(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const grade = await AcademicService.updateGrade(schoolId, req.params.id, req.body.name, req.body.sequenceOrder);
-      return ApiResponse.success(res, grade);
-    } catch (err) {
-      next(err);
-    }
+  // ----------------------------------------------------
+  // SUBJECTS
+  // ----------------------------------------------------
+
+  @Endpoint('SUBJECTS_LIST')
+  @Get('/academic/subjects')
+  async getSubjects(@CurrentUser() user: CurrentUserPayload) {
+    return this.academicService.getSubjects(user.tenantId);
   }
 
-  // Departments
-  static async getDepartments(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const academicYearId = req.query.academicYearId as string;
-      const depts = await AcademicService.getDepartments(schoolId, academicYearId);
-      return ApiResponse.success(res, depts);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('SUBJECT_CREATE')
+  @Post('/academic/subjects')
+  @HttpCode(HttpStatus.CREATED)
+  async createSubject(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() body: unknown,
+  ) {
+    const dto = validate<SubjectCreateDto>(SubjectCreateSchema, body);
+    return this.academicService.createSubject(user.tenantId, dto);
   }
 
-  static async createDepartment(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const dept = await AcademicService.createDepartment(schoolId, req.body.name, req.body.code, req.body.hodTeacherId);
-      return ApiResponse.success(res, dept, 201);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('SUBJECT_UPDATE')
+  @Put('/academic/subjects/:subjectId')
+  async updateSubject(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('subjectId') subjectId: string,
+    @Body() body: unknown,
+  ) {
+    const dto = validate<SubjectUpdateDto>(SubjectUpdateSchema, body);
+    return this.academicService.updateSubject(user.tenantId, subjectId, dto);
   }
 
-  static async updateDepartment(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const dept = await AcademicService.updateDepartment(schoolId, req.params.id, req.body.name, req.body.code, req.body.hodTeacherId);
-      return ApiResponse.success(res, dept);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('CLASS_SUBJECTS_ASSIGN')
+  @Put('/academic/classes/:classId/subjects')
+  async assignClassSubjects(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('classId') classId: string,
+    @Body() body: unknown,
+  ) {
+    const dto = validate<ClassSubjectsAssignDto>(ClassSubjectsAssignSchema, body);
+    return this.academicService.assignClassSubjects(user.tenantId, classId, dto);
   }
 
-  static async deleteDepartment(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      await AcademicService.deleteDepartment(schoolId, req.params.id);
-      return ApiResponse.success(res, { success: true });
-    } catch (err) {
-      next(err);
-    }
+  // ----------------------------------------------------
+  // GRADE SCALES
+  // ----------------------------------------------------
+
+  @Endpoint('GRADE_SCALES_LIST')
+  @Get('/academic/grade-scales')
+  async getGradeScales(@CurrentUser() user: CurrentUserPayload) {
+    return this.academicService.getGradeScales(user.tenantId);
   }
 
-  static async assignFaculty(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { departmentId, academicYearId, teacherIds } = req.body;
-      const result = await AcademicService.assignFacultyToDepartment(departmentId, academicYearId, teacherIds);
-      return ApiResponse.success(res, result);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  // Sections
-  static async getSections(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const academicYearId = req.query.academicYearId as string;
-      const sections = await AcademicService.getSections(schoolId, academicYearId);
-      return ApiResponse.success(res, sections);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  static async createSection(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const section = await AcademicService.createSection(
-        schoolId,
-        req.body.gradeId,
-        req.body.academicYearId,
-        req.body.name,
-        req.body.capacity,
-        req.body.classTeacherId
-      );
-      return ApiResponse.success(res, section, 201);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  static async updateSection(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const section = await AcademicService.updateSection(schoolId, req.params.id, req.body.name, req.body.capacity, req.body.classTeacherId);
-      return ApiResponse.success(res, section);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  static async setClassTeacher(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const teacherId = (req.query.teacherId as string) || req.body.teacherId;
-      const section = await AcademicService.setClassTeacher(schoolId, req.params.id, teacherId);
-      return ApiResponse.success(res, section);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  // Subjects & Subject Types
-  static async getSubjectTypes(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const types = await AcademicService.getSubjectTypes(schoolId);
-      return ApiResponse.success(res, types);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  static async createSubjectType(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const type = await AcademicService.createSubjectType(schoolId, req.body.name, req.body.code, req.body.description);
-      return ApiResponse.success(res, type, 201);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  static async updateSubjectType(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const type = await AcademicService.updateSubjectType(schoolId, req.params.id, req.body.name, req.body.code, req.body.description);
-      return ApiResponse.success(res, type);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  static async deleteSubjectType(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      await AcademicService.deleteSubjectType(schoolId, req.params.id);
-      return ApiResponse.success(res, { success: true });
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  static async getSubjects(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const subjects = await AcademicService.getSubjects(schoolId);
-      return ApiResponse.success(res, subjects);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  static async createSubject(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const subject = await AcademicService.createSubject(schoolId, req.body.name, req.body.code, req.body.subjectTypeId);
-      return ApiResponse.success(res, subject, 201);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  static async getSectionSubjects(req: Request, res: Response, next: NextFunction) {
-    try {
-      const subjects = await AcademicService.getSectionSubjects(req.params.id);
-      return ApiResponse.success(res, subjects);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  static async mapSubjectsToSection(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { sectionId, subjectIds } = req.body;
-      const result = await AcademicService.mapSubjectsToSection(sectionId, subjectIds);
-      return ApiResponse.success(res, result);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  static async assignSubjectTeacher(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { sectionId, subjectId, teacherId } = req.body;
-      const result = await AcademicService.assignSubjectTeacher(sectionId, subjectId, teacherId);
-      return ApiResponse.success(res, result);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  static async rollover(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const fromAcademicYearId = (req.query.fromAcademicYearId as string) || req.body.fromAcademicYearId;
-      const toAcademicYearId = (req.query.toAcademicYearId as string) || req.body.toAcademicYearId;
-      const result = await AcademicService.rolloverAcademicYear(schoolId, fromAcademicYearId, toAcademicYearId);
-      return ApiResponse.success(res, result);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  // Student Progression & Historical Placement (HLD Section 7.2 - 7.4)
-  static async batchPromote(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const { academicYearId, promotions } = req.body;
-      const result = await AcademicService.batchPromoteStudents(schoolId, academicYearId, promotions);
-      return ApiResponse.success(res, result, 201);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  static async getEnrollmentHistory(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const studentId = req.params.studentId;
-      const result = await AcademicService.getStudentEnrollmentHistory(schoolId, studentId);
-      return ApiResponse.success(res, result);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('GRADE_SCALE_UPSERT')
+  @Put('/academic/grade-scales/:gradeScaleId')
+  async upsertGradeScale(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('gradeScaleId') gradeScaleId: string,
+    @Body() body: unknown,
+  ) {
+    const dto = validate<GradeScaleUpsertDto>(GradeScaleUpsertSchema, body);
+    return this.academicService.upsertGradeScale(user.tenantId, gradeScaleId, dto);
   }
 }
+

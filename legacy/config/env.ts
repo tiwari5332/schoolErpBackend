@@ -30,4 +30,4 @@ export const env = {
     .filter(Boolean),
 };
 
-export const ALLOWED_ORIGINS = ["https://myschoolapp.com", "https://admin.myschoolapp.com", "http://localhost:3000", "http://localhost:5173"]
+export const ALLOWED_ORIGINS = ["https://myschoolapp.com", "https://admin.myschoolapp.com", "http://localhost:3000", "http://localhost:5173", "https://webbackendschoolerp.vercel.app"]

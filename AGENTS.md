@@ -9,37 +9,45 @@
 
 ## 1. System Overview & Technology Stack
 
-- **Runtime & Language**: Node.js 18+, TypeScript (v5.5)
-- **Web Framework**: Express.js (v4.19)
-- **Database & ORM**: PostgreSQL database with pure raw SQL queries (`pg` pool, `db.query`, `db.transaction`)
-- **Security & Auth**: `jsonwebtoken` (HS256 stateless tokens), `bcryptjs` for password & OTP hashing, `helmet`, `cors`
-- **Utilities**: `multer` + `csv-parser` for bulk CSV onboarding, `node-cron` for scheduled late fee sweep, `zod` for request validation
-- **Primary Key Strategy**: Standard UUIDs (`@default(uuid()) @db.Uuid`)
-- **Money Handling**: High precision `DECIMAL(10,2)` across all financial fields
-- **Node Project Commands**:
-  - `npm run dev`: Start dev server with auto-reload (`ts-node-dev`)
-  - `npm run build`: Compile TypeScript to `./dist`
-  - `npm start`: Launch compiled production server (`dist/server.js`)
-  - `npx prisma generate`: Generate Prisma Client types
-  - `npx prisma migrate dev`: Run PostgreSQL database migrations
-
-### Project Structure (Feature-Wise Modules under `src/modules/`):
-- `src/modules/academic/` -> `academic.controller.ts`, `academic.service.ts`, `academic.route.ts`
-- `src/modules/session/` -> `session.controller.ts`, `session.service.ts`, `session.route.ts`, `session.dto.ts`
-- `src/modules/me/` -> `me.controller.ts`, `me.route.ts`
-- `src/modules/dashboard/` -> `dashboard.controller.ts`, `dashboard.service.ts`, `dashboard.route.ts`, `dashboard.dto.ts`
-- `src/modules/calendar/` -> `calendar.controller.ts`, `calendar.service.ts`, `calendar.route.ts`
-- `src/modules/auth/` -> `auth.controller.ts`, `auth.service.ts`, `auth.route.ts`
-- `src/modules/billing/` -> `billing.controller.ts`, `billing.service.ts`, `billing.route.ts`
-- `src/modules/fee/` -> `fee.controller.ts`, `fee.service.ts`, `fee.route.ts`
-- `src/modules/onboarding/` -> `onboarding.controller.ts`, `onboarding.service.ts`, `onboarding.route.ts`
-- `src/modules/role/` -> `role.controller.ts`, `role.service.ts`, `role.route.ts`
-- `src/modules/teacher/` -> `teacher.controller.ts`, `teacher.service.ts`, `teacher.route.ts`, `teacher.dto.ts`
-- `src/modules/student/` -> `student.controller.ts`, `student.service.ts`, `student.route.ts`, `student.dto.ts`
-- `src/modules/communication/` -> `communication.controller.ts`, `communication.service.ts`, `communication.routes.ts`
-- `src/modules/notification/` -> `notification.service.ts`, `notification.controller.ts`, `notification.route.ts`
-- `src/modules/attendance/` -> `attendance.controller.ts`, `attendance.service.ts`, `attendance.route.ts`
-- `src/routes/index.ts` -> Central route mount point importing from feature modules.
+- **Runtime & Language**: Node.js 22 LTS, TypeScript (v5.9 strict)
+- **Framework & Monolith**: NestJS 10.4+ with Fastify v4 adapter (`@nestjs/platform-fastify`), modular monolith mapping 1:1 to `api-contract.json` (175 endpoints across 16 modules)
+- **Database & ORM**: PostgreSQL 16 with Prisma Client (`@prisma/client`), connection pooling, RLS (`SET LOCAL app.tenant_id = :tenantId`)
+- **Cache & Async Queues**: Redis 7 (`ioredis`) with tenant namespacing `t:{tenantId}:*`, BullMQ v5 (`outbox-relay`, `notifications`, `imports`, `exports`)
+- **Security & Auth**: JWT access tokens (15m, signed with HMAC-SHA256), rotating opaque refresh tokens (SHA-256 hashed in DB with family reuse detection), Argon2id (`argon2`) password hashing, Helmet, CORS, Rate Limit
+- **Validation & Docs**: Zod schemas derived from `api-contract.json`, OpenAPI 3.1 served at `/docs`
+- **Utilities**: `decimal.js` for financial arithmetic, `ulidx` for prefixed identifiers (`usr_`, `ten_`, `rol_`, `sub_`, `pln_`), `pino` for structured JSON logging
+- **Dual Process Model**:
+  - `npm start` -> `node dist/main.js` (Fastify API server on `/api/v1`)
+  - `npm run start:worker` -> `node dist/worker.js` (BullMQ workers & schedulers)
+  - `npm run build` -> Compiles TypeScript to `./dist`
+  - `npm test` -> Vitest unit & contract test suite
+- **Project Structure**:
+  - `src/contract/` -> Generated contract artefacts (`routes.ts`, `enums.ts`, `fixtures.ts`, `openapi.json`, `schemas.ts`), `@Endpoint()` decorator, `ContractCoverageChecker`
+  - `src/common/` -> Envelopes, exceptions, domain errors, decorators, guards, utilities (`Clock`, `IdGenerator`, `Money`, `PaginationUtil`, `IdempotencyService`)
+  - `src/infra/` -> Prisma, Redis, Queue, Storage, TenantTx context
+  - `src/modules/` -> Feature modules:
+    - `health` -> Health checks (`/health/live`, `/health/ready`)
+    - `auth` -> Authentication, refresh rotation with reuse detection, reset/change password, me, profile (`POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/me`, `POST /auth/forgot-password`, `POST /auth/reset-password`, `POST /auth/change-password`, `PUT /auth/profile`)
+    - `onboarding` -> Pricing plans, school self-signup, onboarding checklist (`GET /public/plans`, `POST /public/schools/register`, `GET /onboarding/status`, `POST /onboarding/dismiss`)
+    - `subscription` -> Billing, Razorpay/Mock checkout, payment confirm, plan change, invoices (`GET /subscription`, `POST /subscription/checkout`, `POST /subscription/confirm`, `POST /subscription/change-plan`, `POST /subscription/cancel`, `GET /subscription/invoices`)
+    - `platform` -> Platform owner KPIs, tenant suspension/activation, plan creation/modification (`GET /platform/metrics`, `GET /platform/tenants`, `PATCH /platform/tenants/:tenantId/status`, `POST /platform/plans`, `PUT /platform/plans/:planId`)
+    - `roles` -> RBAC role management, matrix catalog (`GET /roles`, `POST /roles`, `PUT /roles/:roleId`, `DELETE /roles/:roleId`, `GET /permissions`)
+    - `users` -> Team administration, invitations, account status, invite acceptance (`GET /users`, `POST /users/invite`, `PUT /users/:userId`, `PATCH /users/:userId/status`, `POST /users/:userId/reset-password`, `POST /auth/accept-invite`)
+    - `academic` -> Sessions, classes, sections, subjects, grade scales (`GET /academic/sessions`, `POST /academic/sessions`, `POST /academic/sessions/:id/activate`, `POST /academic/sessions/:id/rollover`, `POST /academic/sessions/:id/lock`, `GET /academic/classes`, `POST /academic/classes`, `PUT /academic/classes/:id`, `DELETE /academic/classes/:id`, `GET /academic/subjects`, `POST /academic/subjects`, `PUT /academic/subjects/:id`, `PUT /academic/classes/:id/subjects`, `GET /academic/grade-scales`, `PUT /academic/grade-scales/:id`)
+    - `calendar` -> Events, holidays, exams, upcoming agenda (`GET /calendar/events`, `GET /calendar/upcoming`, `POST /calendar/events`, `PUT /calendar/events/:id`, `DELETE /calendar/events/:id`)
+    - `students` -> Student lifecycle, profile, status, document upload, batch promotion, transfer certificate (TC) generation with fee dues check, ID cards, admission number sequencing (`GET /students`, `POST /students`, `GET /students/:studentId`, `PUT /students/:studentId`, `PATCH /students/:studentId/status`, `DELETE /students/:studentId`, `POST /students/:studentId/documents`, `POST /students/promotions`, `POST /students/:studentId/transfer-certificate`, `POST /students/id-cards`, `GET /students/next-admission-no`)
+    - `staff` -> Staff administration, departments, assignments, login provisioning, leave management (`GET /staff`, `POST /staff`, `GET /staff/:staffId`, `PUT /staff/:staffId`, `PATCH /staff/:staffId/status`, `DELETE /staff/:staffId`, `POST /leaves`, `GET /leaves`, `POST /leaves/:leaveId/decision`, `POST /leaves/:leaveId/cancel`)
+    - `attendance` -> Student daily/monthly roster, bulk marking, day/month summary, staff roster, bulk staff marking, staff self check-in/out, monthly registers (`GET /attendance/students`, `POST /attendance/students`, `GET /attendance/students/summary`, `GET /attendance/students/monthly`, `GET /attendance/staff`, `POST /attendance/staff`, `POST /attendance/staff/check-in`, `GET /attendance/staff/monthly`)
+    - `timetable` -> Bell schedule, class timetable, teacher timetable, timetable entry upsert with teacher double-booking conflict detection, substitutions, free teachers query (`GET /timetable/periods`, `PUT /timetable/periods`, `GET /timetable/class`, `GET /timetable/teacher`, `PUT /timetable/entries`, `DELETE /timetable/entries/:entryId`, `POST /timetable/substitutions`, `GET /timetable/free-teachers`)
+    - `exams` -> Examination lifecycle, papers scheduling, marks entry sheet, paper locking/unlocking, CSV/Excel import, publishing/unpublishing, consolidated class rank results, report cards JSON, bulk report card PDFs, admit cards PDFs (`GET /exams`, `POST /exams`, `GET /exams/:examId`, `PUT /exams/:examId`, `DELETE /exams/:examId`, `GET /exams/:examId/marks`, `PUT /exams/:examId/marks`, `POST /exams/:examId/marks/lock`, `POST /exams/:examId/marks/unlock`, `POST /exams/:examId/marks/import`, `POST /exams/:examId/publish`, `POST /exams/:examId/unpublish`, `GET /exams/:examId/results`, `GET /students/:studentId/report-card`, `POST /exams/:examId/report-cards/pdf`, `POST /exams/:examId/admit-cards/pdf`)
+    - `fees` -> Fee heads/categories, fee structures with auto-line generation for enrolled students, student fee assignments, student ledger, fee collection & receipts, payment registers, refunds, concessions/waivers, defaulters list, due reminders, executive fee summary, online gateway payments (`GET /fees/categories`, `POST /fees/categories`, `GET /fees/structures`, `POST /fees/structures`, `PUT /fees/structures/:structureId`, `POST /fees/students/:studentId/assign`, `GET /fees/students/:studentId/ledger`, `POST /fees/payments`, `GET /fees/payments`, `GET /fees/payments/:paymentId/receipt`, `POST /fees/payments/:paymentId/refund`, `POST /fees/concessions`, `GET /fees/dues`, `POST /fees/reminders`, `GET /fees/summary`, `POST /fees/online/initiate`, `POST /fees/online/confirm`)
+    - `communication` -> School notice board, recipient estimation, WhatsApp/SMS/Email pre-approved templates, direct & class chat threads, real-time messages, portal notices (`GET /communication/notices`, `POST /communication/notices`, `GET /communication/notices/:id`, `DELETE /communication/notices/:id`, `POST /communication/notices/estimate-recipients`, `GET /communication/templates`, `POST /communication/templates`, `PUT /communication/templates/:id`, `GET /communication/threads`, `POST /communication/threads`, `GET /communication/threads/:threadId/messages`, `POST /communication/threads/:threadId/messages`, `POST /communication/threads/:threadId/read`, `GET /portal/notices`)
+    - `dashboard` -> Executive KPIs (students, staff, fees, attendance), quick actions matrix, fee & attendance trends, pending approvals backlog, approvals decision, global omni-search, notification bell management (`GET /dashboard/kpis/students`, `GET /dashboard/kpis/staff`, `GET /dashboard/kpis/fees-today`, `GET /dashboard/kpis/attendance`, `GET /dashboard/quick-actions`, `GET /dashboard/charts/fee-trend`, `GET /dashboard/charts/attendance-trend`, `GET /dashboard/pending-approvals`, `GET /approvals`, `POST /approvals/:approvalId/decision`, `GET /search`, `GET /notifications`, `PATCH /notifications/:notificationId/read`, `POST /notifications/read-all`)
+    - `reports` -> Pre-built report catalog, on-demand report runner with filtering & pagination, async background export jobs, export status & download tracking (`GET /reports/catalog`, `POST /reports/:reportKey/data`, `POST /reports/:reportKey/export`, `GET /reports/exports/:jobId`)
+    - `bulk` -> Master CSV/Excel template generator, bulk file upload & server-side validation/parsing, paged row preview with error reporting, atomic commit, and import cancellation (`GET /bulk/templates/:entity`, `POST /bulk/upload`, `GET /bulk/imports/:importId`, `GET /bulk/imports/:importId/rows`, `POST /bulk/imports/:importId/commit`, `GET /bulk/imports/:importId/error-report`, `POST /bulk/imports/:importId/cancel`, `GET /bulk/history`)
+    - `settings` -> School profile management, global ERP preferences, pre-signed/direct file uploads, tamper-evident audit logs (`GET /settings/school`, `PUT /settings/school`, `GET /settings/preferences`, `PUT /settings/preferences`, `POST /files/upload`, `GET /audit-logs`)
+    - `portal` -> Parent & student self-service portal: linked children, student 360 overview dashboard, calendar attendance marks, real-time fee dues & payment receipts ledger, published examination report cards, student leave application (`GET /portal/children`, `GET /portal/children/:studentId/overview`, `GET /portal/children/:studentId/attendance`, `GET /portal/children/:studentId/fees`, `GET /portal/children/:studentId/results`, `POST /portal/children/:studentId/leave`)
+  - `legacy/` -> Archived Express prototype controllers, routes, middleware, and database pool for historical reference
 
 ---
 

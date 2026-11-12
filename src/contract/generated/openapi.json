@@ -1,0 +1,5270 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "EduTrio School ERP - API Contract",
+    "version": "1.0.0",
+    "description": "Single source of truth for every API: request payload and response. Frontend types, Zod schemas and MSW mock handlers MUST be generated/derived from this file. If a new endpoint is needed, add it here FIRST."
+  },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "operationId": "AUTH_LOGIN",
+        "summary": "Login with email/phone + password",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "accessToken": "jwt...",
+                  "refreshToken": "rt...",
+                  "expiresIn": 900,
+                  "user": {
+                    "$ref": "#/components/entities/User"
+                  },
+                  "tenant": {
+                    "$ref": "#/components/entities/Tenant"
+                  },
+                  "permissions": [
+                    "dashboard.view",
+                    "students.view"
+                  ],
+                  "subscription": {
+                    "status": "TRIAL",
+                    "trialEndsAt": "2026-11-15"
+                  },
+                  "mustChangePassword": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "operationId": "AUTH_REFRESH",
+        "summary": "Rotate tokens",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "accessToken": "jwt...",
+                  "refreshToken": "rt2...",
+                  "expiresIn": 900
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "AUTH_LOGOUT",
+        "summary": "Invalidate refresh token",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "operationId": "AUTH_ME",
+        "summary": "Current user, tenant, permissions, active session",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "user": {
+                    "$ref": "#/components/entities/User"
+                  },
+                  "tenant": {
+                    "$ref": "#/components/entities/Tenant"
+                  },
+                  "permissions": [
+                    "dashboard.view"
+                  ],
+                  "activeSession": {
+                    "$ref": "#/components/entities/AcademicSession"
+                  },
+                  "serverDate": "2026-11-12",
+                  "serverDateTime": "2026-11-12T08:31:00Z"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "operationId": "AUTH_FORGOT_PASSWORD",
+        "summary": "Send reset link/OTP",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "If the account exists, a reset link has been sent."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "operationId": "AUTH_RESET_PASSWORD",
+        "summary": "Reset password with token",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Password updated"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/change-password": {
+      "post": {
+        "operationId": "AUTH_CHANGE_PASSWORD",
+        "summary": "Change own password",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Password changed"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/profile": {
+      "put": {
+        "operationId": "AUTH_UPDATE_PROFILE",
+        "summary": "Update own profile",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/User"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/plans": {
+      "get": {
+        "operationId": "PLANS_LIST",
+        "summary": "Public pricing plans",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/Plan"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/schools/register": {
+      "post": {
+        "operationId": "TENANT_REGISTER",
+        "summary": "School self-signup, creates tenant + super admin + trial",
+        "security": [],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "tenant": {
+                    "$ref": "#/components/entities/Tenant"
+                  },
+                  "user": {
+                    "$ref": "#/components/entities/User"
+                  },
+                  "subscription": {
+                    "$ref": "#/components/entities/Subscription"
+                  },
+                  "accessToken": "jwt...",
+                  "refreshToken": "rt..."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/onboarding/status": {
+      "get": {
+        "operationId": "ONBOARDING_STATUS",
+        "summary": "Getting-started checklist for new admin",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "completedCount": 2,
+                  "totalCount": 7,
+                  "steps": [
+                    {
+                      "key": "school_profile",
+                      "title": "Complete school profile",
+                      "isDone": true,
+                      "link": "/settings/school"
+                    },
+                    {
+                      "key": "academic_session",
+                      "title": "Set academic session",
+                      "isDone": true,
+                      "link": "/academic/sessions"
+                    },
+                    {
+                      "key": "classes",
+                      "title": "Add classes & sections",
+                      "isDone": false,
+                      "link": "/academic/classes"
+                    },
+                    {
+                      "key": "fee_structure",
+                      "title": "Create fee structure",
+                      "isDone": false,
+                      "link": "/fees/structures"
+                    },
+                    {
+                      "key": "staff",
+                      "title": "Add staff",
+                      "isDone": false,
+                      "link": "/staff/new"
+                    },
+                    {
+                      "key": "students",
+                      "title": "Add or import students",
+                      "isDone": false,
+                      "link": "/students/import"
+                    },
+                    {
+                      "key": "invite_team",
+                      "title": "Invite your team",
+                      "isDone": false,
+                      "link": "/administrators"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/onboarding/dismiss": {
+      "post": {
+        "operationId": "ONBOARDING_DISMISS",
+        "summary": "Hide checklist",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/subscription": {
+      "get": {
+        "operationId": "SUBSCRIPTION_GET",
+        "summary": "Current subscription + usage",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Subscription"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/subscription/checkout": {
+      "post": {
+        "operationId": "SUBSCRIPTION_CHECKOUT",
+        "summary": "Start payment for plan (gateway order)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "orderId": "ord_01",
+                  "gateway": "RAZORPAY",
+                  "amount": 26991,
+                  "currency": "INR",
+                  "gatewayPayload": {
+                    "key": "rzp_test_x",
+                    "orderId": "order_x"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/subscription/confirm": {
+      "post": {
+        "operationId": "SUBSCRIPTION_CONFIRM",
+        "summary": "Confirm payment after gateway callback",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Subscription"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/subscription/change-plan": {
+      "post": {
+        "operationId": "SUBSCRIPTION_CHANGE_PLAN",
+        "summary": "Upgrade/downgrade",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Subscription"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/subscription/cancel": {
+      "post": {
+        "operationId": "SUBSCRIPTION_CANCEL",
+        "summary": "Cancel at period end",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Subscription"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/subscription/invoices": {
+      "get": {
+        "operationId": "SUBSCRIPTION_INVOICES",
+        "summary": "Billing history",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "id": "inv_01",
+                      "number": "INV-2026-0001",
+                      "amount": 26991,
+                      "currency": "INR",
+                      "status": "PAID",
+                      "issuedAt": "2026-11-01",
+                      "pdfUrl": "https://files/inv.pdf"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/platform/metrics": {
+      "get": {
+        "operationId": "PLATFORM_METRICS",
+        "summary": "Platform owner KPIs",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "totalSchools": 120,
+                  "activeSchools": 95,
+                  "trialSchools": 20,
+                  "mrr": 245000,
+                  "churnPercent": 2.1,
+                  "signupsTrend": [
+                    {
+                      "date": "2026-11-01",
+                      "count": 3
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/platform/tenants": {
+      "get": {
+        "operationId": "PLATFORM_TENANTS_LIST",
+        "summary": "All schools",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/Tenant"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/platform/tenants/{tenantId}/status": {
+      "patch": {
+        "operationId": "PLATFORM_TENANT_STATUS",
+        "summary": "Suspend/activate school",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Tenant"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/platform/plans": {
+      "post": {
+        "operationId": "PLATFORM_PLAN_CREATE",
+        "summary": "Create plan",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Plan"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/platform/plans/{planId}": {
+      "put": {
+        "operationId": "PLATFORM_PLAN_UPDATE",
+        "summary": "Update plan",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Plan"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dashboard/kpi/students": {
+      "get": {
+        "operationId": "DASH_KPI_STUDENTS",
+        "summary": "Students card (independent so each card can fail/retry alone)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "total": 342,
+                  "active": 330,
+                  "newThisMonth": 12,
+                  "deltaPercent": 3.6,
+                  "sparkline": [
+                    320,
+                    325,
+                    330,
+                    342
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dashboard/kpi/staff": {
+      "get": {
+        "operationId": "DASH_KPI_STAFF",
+        "summary": "Staff card",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "total": 28,
+                  "teaching": 21,
+                  "nonTeaching": 7,
+                  "onLeaveToday": 2
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dashboard/kpi/fees-today": {
+      "get": {
+        "operationId": "DASH_KPI_FEES_TODAY",
+        "summary": "Fees collected today card",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "amount": 84500,
+                  "currency": "INR",
+                  "transactions": 23,
+                  "vsYesterdayPercent": 12.4,
+                  "pendingTotal": 640000
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dashboard/kpi/attendance": {
+      "get": {
+        "operationId": "DASH_KPI_ATTENDANCE",
+        "summary": "Student attendance today card",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "date": "2026-11-12",
+                  "present": 310,
+                  "absent": 20,
+                  "late": 5,
+                  "total": 335,
+                  "percent": 92.5,
+                  "markedClasses": 14,
+                  "totalClasses": 16
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dashboard/quick-actions": {
+      "get": {
+        "operationId": "DASH_QUICK_ACTIONS",
+        "summary": "Role-aware shortcuts",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "role": "SUPER_ADMIN",
+                  "actions": [
+                    {
+                      "key": "add_student",
+                      "label": "Add Student",
+                      "icon": "user-plus",
+                      "link": "/students/new",
+                      "permission": "students.create"
+                    },
+                    {
+                      "key": "mark_attendance",
+                      "label": "Mark Attendance",
+                      "icon": "check-square",
+                      "link": "/attendance/students",
+                      "permission": "attendance.student.mark"
+                    },
+                    {
+                      "key": "collect_fee",
+                      "label": "Collect Fee",
+                      "icon": "wallet",
+                      "link": "/fees/collect",
+                      "permission": "fees.collect"
+                    },
+                    {
+                      "key": "send_notice",
+                      "label": "Send Notice",
+                      "icon": "megaphone",
+                      "link": "/communication/new",
+                      "permission": "communication.send"
+                    },
+                    {
+                      "key": "create_exam",
+                      "label": "Create Exam",
+                      "icon": "file-text",
+                      "link": "/exams/new",
+                      "permission": "exams.create"
+                    },
+                    {
+                      "key": "bulk_upload",
+                      "label": "Bulk Upload",
+                      "icon": "upload",
+                      "link": "/bulk-upload",
+                      "permission": "students.import"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dashboard/fee-trend": {
+      "get": {
+        "operationId": "DASH_FEE_TREND",
+        "summary": "Fee collection trend",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "range": "7d",
+                  "points": [
+                    {
+                      "date": "2026-11-06",
+                      "collected": 52000,
+                      "due": 80000
+                    }
+                  ],
+                  "totalCollected": 410000
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dashboard/attendance-trend": {
+      "get": {
+        "operationId": "DASH_ATTENDANCE_TREND",
+        "summary": "Attendance trend",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "points": [
+                    {
+                      "date": "2026-11-06",
+                      "studentPercent": 93.1,
+                      "staffPercent": 96
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dashboard/pending-approvals": {
+      "get": {
+        "operationId": "DASH_PENDING_APPROVALS",
+        "summary": "Pending approvals widget",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "total": 4,
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/Approval"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approvals/{approvalId}/decision": {
+      "post": {
+        "operationId": "APPROVAL_DECIDE",
+        "summary": "Approve or reject",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Approval"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approvals": {
+      "get": {
+        "operationId": "APPROVALS_LIST",
+        "summary": "All approvals",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/Approval"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/calendar/events": {
+      "get": {
+        "operationId": "CALENDAR_EVENTS",
+        "summary": "Events + holidays for a month",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "month": "2026-11",
+                  "serverDate": "2026-11-12",
+                  "events": [
+                    {
+                      "$ref": "#/components/entities/CalendarEvent"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "CALENDAR_EVENT_CREATE",
+        "summary": "Add event/holiday",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/CalendarEvent"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/calendar/upcoming": {
+      "get": {
+        "operationId": "CALENDAR_UPCOMING",
+        "summary": "Upcoming events in N days",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "count": 1,
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/CalendarEvent"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/calendar/events/{eventId}": {
+      "put": {
+        "operationId": "CALENDAR_EVENT_UPDATE",
+        "summary": "Update event",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/CalendarEvent"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "CALENDAR_EVENT_DELETE",
+        "summary": "Delete event",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/search": {
+      "get": {
+        "operationId": "GLOBAL_SEARCH",
+        "summary": "Header search across students, staff, pages",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "students": [
+                    {
+                      "id": "stu_01",
+                      "title": "Aarav Sharma",
+                      "subtitle": "Class 5-A | ADM-2026-0001",
+                      "link": "/students/stu_01"
+                    }
+                  ],
+                  "staff": [],
+                  "pages": [
+                    {
+                      "title": "Fee Management",
+                      "link": "/fees"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications": {
+      "get": {
+        "operationId": "NOTIFICATIONS_LIST",
+        "summary": "Bell dropdown",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "unreadCount": 3,
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/Notification"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/{notificationId}/read": {
+      "patch": {
+        "operationId": "NOTIFICATION_READ",
+        "summary": "Mark one as read",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/notifications/read-all": {
+      "post": {
+        "operationId": "NOTIFICATIONS_READ_ALL",
+        "summary": "Mark all read",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/academic/sessions": {
+      "get": {
+        "operationId": "SESSIONS_LIST",
+        "summary": "Header session dropdown",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/AcademicSession"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "SESSION_CREATE",
+        "summary": "Create session",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/AcademicSession"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/academic/sessions/{sessionId}/activate": {
+      "post": {
+        "operationId": "SESSION_ACTIVATE",
+        "summary": "Make active",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/AcademicSession"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/academic/sessions/{sessionId}/rollover": {
+      "post": {
+        "operationId": "SESSION_ROLLOVER",
+        "summary": "Copy classes, fee structures, subjects into new session",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "copied": {
+                    "classes": 12,
+                    "subjects": 40,
+                    "feeStructures": 12,
+                    "timetableEntries": 480
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/academic/sessions/{sessionId}/lock": {
+      "post": {
+        "operationId": "SESSION_LOCK",
+        "summary": "Lock a past session (read only)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/AcademicSession"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/academic/classes": {
+      "get": {
+        "operationId": "CLASSES_LIST",
+        "summary": "Classes with sections",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/Class"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "CLASS_CREATE",
+        "summary": "Create class with sections",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Class"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/academic/classes/{classId}": {
+      "put": {
+        "operationId": "CLASS_UPDATE",
+        "summary": "Update class and sections",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Class"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "CLASS_DELETE",
+        "summary": "Delete (blocked if students exist)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/academic/subjects": {
+      "get": {
+        "operationId": "SUBJECTS_LIST",
+        "summary": "Subjects",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/Subject"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "SUBJECT_CREATE",
+        "summary": "Create subject",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Subject"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/academic/subjects/{subjectId}": {
+      "put": {
+        "operationId": "SUBJECT_UPDATE",
+        "summary": "Update subject",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Subject"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/academic/classes/{classId}/subjects": {
+      "put": {
+        "operationId": "CLASS_SUBJECTS_ASSIGN",
+        "summary": "Map subjects to class",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Class"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/academic/grade-scales": {
+      "get": {
+        "operationId": "GRADE_SCALES_LIST",
+        "summary": "Grading schemes",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/GradeScale"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/academic/grade-scales/{gradeScaleId}": {
+      "put": {
+        "operationId": "GRADE_SCALE_UPSERT",
+        "summary": "Edit grading scheme",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/GradeScale"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/students": {
+      "get": {
+        "operationId": "STUDENTS_LIST",
+        "summary": "Paginated list",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/Student"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "STUDENT_CREATE",
+        "summary": "Add student with guardians (auto fee assignment from class structure)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Student"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/students/{studentId}": {
+      "get": {
+        "operationId": "STUDENT_GET",
+        "summary": "Student 360 profile",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "student": {
+                    "$ref": "#/components/entities/Student"
+                  },
+                  "attendanceSummary": {
+                    "present": 120,
+                    "absent": 8,
+                    "late": 3,
+                    "percent": 94.5
+                  },
+                  "feeSummary": {
+                    "totalDue": 4500,
+                    "totalPaid": 13500
+                  },
+                  "recentResults": [
+                    {
+                      "examName": "Unit Test 1",
+                      "percentage": 88
+                    }
+                  ],
+                  "documents": [
+                    {
+                      "id": "doc_01",
+                      "name": "Birth Certificate",
+                      "url": "https://files/doc.pdf",
+                      "type": "BIRTH_CERTIFICATE"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "STUDENT_UPDATE",
+        "summary": "Update student",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Student"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "STUDENT_DELETE",
+        "summary": "Soft delete",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/students/{studentId}/status": {
+      "patch": {
+        "operationId": "STUDENT_STATUS",
+        "summary": "Change status",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Student"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/students/{studentId}/documents": {
+      "post": {
+        "operationId": "STUDENT_DOCUMENT_UPLOAD",
+        "summary": "Upload document (multipart)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "doc_01",
+                  "name": "Birth Certificate",
+                  "url": "https://files/doc.pdf",
+                  "type": "BIRTH_CERTIFICATE"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/students/promotions": {
+      "post": {
+        "operationId": "STUDENT_PROMOTE",
+        "summary": "Bulk promote / detain / alumni at year end",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "total": 2,
+                  "succeeded": 2,
+                  "failed": 0,
+                  "errors": []
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/students/{studentId}/transfer-certificate": {
+      "post": {
+        "operationId": "STUDENT_TC_GENERATE",
+        "summary": "Generate TC (blocked if dues pending unless override)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "tcNumber": "TC-2026-004",
+                  "pdfUrl": "https://files/tc.pdf"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/students/id-cards": {
+      "post": {
+        "operationId": "STUDENT_ID_CARDS",
+        "summary": "Generate ID cards PDF for selected students",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "pdfUrl": "https://files/idcards.pdf"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/students/next-admission-no": {
+      "get": {
+        "operationId": "STUDENT_NEXT_ADMISSION_NO",
+        "summary": "Suggested admission number",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "admissionNo": "ADM-2026-0003"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff": {
+      "get": {
+        "operationId": "STAFF_LIST",
+        "summary": "Paginated list",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/Staff"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "STAFF_CREATE",
+        "summary": "Add staff and optionally create login",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Staff"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/{staffId}": {
+      "get": {
+        "operationId": "STAFF_GET",
+        "summary": "Staff profile",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "staff": {
+                    "$ref": "#/components/entities/Staff"
+                  },
+                  "attendanceSummary": {
+                    "present": 20,
+                    "absent": 1,
+                    "leave": 2,
+                    "percent": 95
+                  },
+                  "leaveBalance": [
+                    {
+                      "type": "CASUAL",
+                      "total": 12,
+                      "used": 3
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "STAFF_UPDATE",
+        "summary": "Update staff",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Staff"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "STAFF_DELETE",
+        "summary": "Soft delete",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/staff/{staffId}/status": {
+      "patch": {
+        "operationId": "STAFF_STATUS",
+        "summary": "Change status",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Staff"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/leaves": {
+      "post": {
+        "operationId": "LEAVE_APPLY",
+        "summary": "Apply leave (creates approval)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/LeaveRequest"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "LEAVES_LIST",
+        "summary": "My leaves or all (if leave.approve)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/LeaveRequest"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/leaves/{leaveId}/decision": {
+      "post": {
+        "operationId": "LEAVE_DECIDE",
+        "summary": "Approve / reject leave",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/LeaveRequest"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/leaves/{leaveId}/cancel": {
+      "post": {
+        "operationId": "LEAVE_CANCEL",
+        "summary": "Cancel own pending leave",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/attendance/students": {
+      "get": {
+        "operationId": "ATT_STUDENT_GET",
+        "summary": "Roster for class/section/date with existing marks",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "date": "2026-11-12",
+                  "isHoliday": false,
+                  "isMarked": false,
+                  "records": [
+                    {
+                      "$ref": "#/components/entities/StudentAttendanceRecord"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "ATT_STUDENT_MARK",
+        "summary": "Save whole class attendance (upsert, bulk). Default all PRESENT in UI.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "date": "2026-11-12",
+                  "present": 35,
+                  "absent": 1,
+                  "late": 0,
+                  "notified": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attendance/students/summary": {
+      "get": {
+        "operationId": "ATT_STUDENT_SUMMARY",
+        "summary": "Day/month summary by class",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "classes": [
+                    {
+                      "classId": "cls_05",
+                      "sectionId": "sec_05A",
+                      "label": "Class 5-A",
+                      "total": 36,
+                      "present": 34,
+                      "absent": 2,
+                      "percent": 94.4,
+                      "isMarked": true,
+                      "markedBy": "Anita Verma"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attendance/students/monthly": {
+      "get": {
+        "operationId": "ATT_STUDENT_MONTHLY",
+        "summary": "Monthly register grid",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "month": "2026-11",
+                  "days": [
+                    "2026-11-02",
+                    "2026-11-03"
+                  ],
+                  "students": [
+                    {
+                      "studentId": "stu_01",
+                      "name": "Aarav Sharma",
+                      "marks": {
+                        "2026-11-02": "PRESENT",
+                        "2026-11-03": "ABSENT"
+                      },
+                      "presentCount": 20,
+                      "absentCount": 1,
+                      "percent": 95.2
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attendance/staff": {
+      "get": {
+        "operationId": "ATT_STAFF_GET",
+        "summary": "Staff roster for date",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "date": "2026-11-12",
+                  "isMarked": false,
+                  "records": [
+                    {
+                      "$ref": "#/components/entities/StaffAttendanceRecord"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "ATT_STAFF_MARK",
+        "summary": "Bulk mark staff attendance",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "present": 25,
+                  "absent": 1,
+                  "leave": 2
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attendance/staff/check-in": {
+      "post": {
+        "operationId": "ATT_STAFF_SELF_CHECKIN",
+        "summary": "Self check-in / check-out",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "PRESENT",
+                  "checkIn": "08:45",
+                  "checkOut": null
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attendance/staff/monthly": {
+      "get": {
+        "operationId": "ATT_STAFF_MONTHLY",
+        "summary": "Staff monthly register",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "month": "2026-11",
+                  "days": [
+                    "2026-11-02"
+                  ],
+                  "staff": [
+                    {
+                      "staffId": "stf_21",
+                      "name": "Anita Verma",
+                      "marks": {
+                        "2026-11-02": "PRESENT"
+                      },
+                      "presentCount": 20,
+                      "percent": 95
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/timetable/periods": {
+      "get": {
+        "operationId": "PERIODS_GET",
+        "summary": "Bell schedule",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/Period"
+                    }
+                  ],
+                  "workingDays": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "PERIODS_PUT",
+        "summary": "Replace bell schedule",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/Period"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/timetable/class": {
+      "get": {
+        "operationId": "TIMETABLE_BY_CLASS",
+        "summary": "Class timetable",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "periods": [
+                    {
+                      "$ref": "#/components/entities/Period"
+                    }
+                  ],
+                  "entries": [
+                    {
+                      "$ref": "#/components/entities/TimetableEntry"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/timetable/teacher": {
+      "get": {
+        "operationId": "TIMETABLE_BY_TEACHER",
+        "summary": "Teacher timetable (own by default)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "periods": [
+                    {
+                      "$ref": "#/components/entities/Period"
+                    }
+                  ],
+                  "entries": [
+                    {
+                      "$ref": "#/components/entities/TimetableEntry"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/timetable/entries": {
+      "put": {
+        "operationId": "TIMETABLE_ENTRY_UPSERT",
+        "summary": "Set a cell. Server rejects teacher double-booking.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/TimetableEntry"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/timetable/entries/{entryId}": {
+      "delete": {
+        "operationId": "TIMETABLE_ENTRY_DELETE",
+        "summary": "Clear cell",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/timetable/substitutions": {
+      "post": {
+        "operationId": "TIMETABLE_SUBSTITUTE",
+        "summary": "Assign substitute teacher for a date",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "sbs_01",
+                  "date": "2026-11-13",
+                  "entryId": "ttb_01",
+                  "substituteTeacherId": "stf_22"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/timetable/free-teachers": {
+      "get": {
+        "operationId": "TIMETABLE_FREE_TEACHERS",
+        "summary": "Teachers free in a period",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "staffId": "stf_22",
+                      "name": "Ravi Kumar"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exams": {
+      "get": {
+        "operationId": "EXAMS_LIST",
+        "summary": "Exams list",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/Exam"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "EXAM_CREATE",
+        "summary": "Create exam (wizard step 1-3 saved in one call)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "exam": {
+                    "$ref": "#/components/entities/Exam"
+                  },
+                  "papers": [
+                    {
+                      "$ref": "#/components/entities/ExamPaper"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exams/{examId}": {
+      "get": {
+        "operationId": "EXAM_GET",
+        "summary": "Exam detail with papers and marks-entry progress",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "exam": {
+                    "$ref": "#/components/entities/Exam"
+                  },
+                  "papers": [
+                    {
+                      "$ref": "#/components/entities/ExamPaper"
+                    }
+                  ],
+                  "progress": [
+                    {
+                      "classId": "cls_05",
+                      "subjectId": "sbj_math",
+                      "entered": 30,
+                      "total": 36,
+                      "isLocked": false
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "EXAM_UPDATE",
+        "summary": "Update exam/papers (blocked once published)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Exam"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "EXAM_DELETE",
+        "summary": "Delete draft exam",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/exams/{examId}/marks": {
+      "get": {
+        "operationId": "EXAM_MARKS_GET",
+        "summary": "Marks sheet for class/section/subject (teacher sees only assigned)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "paper": {
+                    "$ref": "#/components/entities/ExamPaper"
+                  },
+                  "isLocked": false,
+                  "rows": [
+                    {
+                      "$ref": "#/components/entities/MarksRow"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "EXAM_MARKS_SAVE",
+        "summary": "Save marks (draft, autosave friendly)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "saved": 36,
+                  "entered": 36,
+                  "total": 36
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exams/{examId}/marks/lock": {
+      "post": {
+        "operationId": "EXAM_MARKS_LOCK",
+        "summary": "Lock marks for a paper (teacher submit)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "isLocked": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exams/{examId}/marks/unlock": {
+      "post": {
+        "operationId": "EXAM_MARKS_UNLOCK",
+        "summary": "Admin unlock",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "isLocked": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exams/{examId}/marks/import": {
+      "post": {
+        "operationId": "EXAM_MARKS_IMPORT",
+        "summary": "Use BULK_UPLOAD with entity MARKS (this is a shortcut that returns importId)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/ImportJob"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exams/{examId}/publish": {
+      "post": {
+        "operationId": "EXAM_PUBLISH",
+        "summary": "Publish results; requires all papers locked; notifies parents",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "exam": {
+                    "$ref": "#/components/entities/Exam"
+                  },
+                  "notified": 342
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exams/{examId}/unpublish": {
+      "post": {
+        "operationId": "EXAM_UNPUBLISH",
+        "summary": "Withdraw published results",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Exam"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exams/{examId}/results": {
+      "get": {
+        "operationId": "EXAM_RESULTS",
+        "summary": "Class-wise consolidated results with ranks",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "subjects": [
+                    "Mathematics",
+                    "English"
+                  ],
+                  "rows": [
+                    {
+                      "studentId": "stu_01",
+                      "name": "Aarav Sharma",
+                      "marks": {
+                        "Mathematics": 87.5,
+                        "English": 80
+                      },
+                      "total": 450,
+                      "percentage": 90,
+                      "grade": "A1",
+                      "rank": 3,
+                      "result": "PASS"
+                    }
+                  ],
+                  "stats": {
+                    "passPercent": 95,
+                    "average": 72.4,
+                    "topper": "Aarav Sharma"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/students/{studentId}/report-card": {
+      "get": {
+        "operationId": "REPORT_CARD_GET",
+        "summary": "Report card JSON (PDF built on client or via REPORT_CARD_PDF)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/ReportCard"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exams/{examId}/report-cards/pdf": {
+      "post": {
+        "operationId": "REPORT_CARD_PDF_BULK",
+        "summary": "Generate report cards PDF for class",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "pdfUrl": "https://files/reportcards.pdf"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exams/{examId}/admit-cards/pdf": {
+      "post": {
+        "operationId": "ADMIT_CARDS_PDF",
+        "summary": "Generate admit cards (blocked for students with fee dues if setting enabled)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "pdfUrl": "https://files/admit.pdf",
+                  "skippedForDues": [
+                    "stu_09"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/children/{studentId}/results": {
+      "get": {
+        "operationId": "PORTAL_RESULTS",
+        "summary": "Published exam list for parent/student",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "examId": "exm_01",
+                      "examName": "Half Yearly 2026",
+                      "percentage": 90,
+                      "grade": "A1",
+                      "publishedAt": "2026-12-20T10:00:00Z"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fees/categories": {
+      "get": {
+        "operationId": "FEE_CATEGORIES_LIST",
+        "summary": "Fee heads",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/FeeCategory"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "FEE_CATEGORY_CREATE",
+        "summary": "Create fee head",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/FeeCategory"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fees/structures": {
+      "get": {
+        "operationId": "FEE_STRUCTURES_LIST",
+        "summary": "Fee structures",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/FeeStructure"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "FEE_STRUCTURE_CREATE",
+        "summary": "Create structure and generate fee lines for enrolled students",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "structure": {
+                    "$ref": "#/components/entities/FeeStructure"
+                  },
+                  "linesGenerated": 432
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fees/structures/{structureId}": {
+      "put": {
+        "operationId": "FEE_STRUCTURE_UPDATE",
+        "summary": "Update structure (affects future lines only)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/FeeStructure"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fees/students/{studentId}/assign": {
+      "post": {
+        "operationId": "FEE_ASSIGN_STUDENT",
+        "summary": "Assign extra/custom fee (e.g. transport) to a student",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "linesCreated": 5
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fees/students/{studentId}/ledger": {
+      "get": {
+        "operationId": "FEE_STUDENT_LEDGER",
+        "summary": "All fee lines + payments for a student (collect screen)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "student": {
+                    "id": "stu_01",
+                    "name": "Aarav Sharma",
+                    "className": "Class 5-A",
+                    "admissionNo": "ADM-2026-0001",
+                    "guardianName": "Rakesh Sharma",
+                    "guardianPhone": "+919811111111"
+                  },
+                  "totalAmount": 18000,
+                  "totalPaid": 13500,
+                  "totalConcession": 0,
+                  "totalDue": 4500,
+                  "lines": [
+                    {
+                      "$ref": "#/components/entities/FeeLine"
+                    }
+                  ],
+                  "payments": [
+                    {
+                      "$ref": "#/components/entities/FeePayment"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fees/payments": {
+      "post": {
+        "operationId": "FEE_COLLECT",
+        "summary": "Collect payment against selected lines (idempotent). Returns receipt.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/FeePayment"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "FEE_PAYMENTS_LIST",
+        "summary": "Payment register",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/FeePayment"
+                    }
+                  ],
+                  "totals": {
+                    "amount": 84500,
+                    "count": 23
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fees/payments/{paymentId}/receipt": {
+      "get": {
+        "operationId": "FEE_RECEIPT",
+        "summary": "Receipt data (client renders PDF) or pdfUrl",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "payment": {
+                    "$ref": "#/components/entities/FeePayment"
+                  },
+                  "school": {
+                    "name": "Sunrise Public School",
+                    "address": "12 Civil Lines",
+                    "phone": "+915322000000",
+                    "logoUrl": null
+                  },
+                  "amountInWords": "Three thousand rupees only",
+                  "pdfUrl": "https://files/receipt.pdf"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fees/payments/{paymentId}/refund": {
+      "post": {
+        "operationId": "FEE_PAYMENT_REFUND",
+        "summary": "Request refund (goes to approvals)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "approvalId": "apr_09",
+                  "status": "PENDING"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fees/concessions": {
+      "post": {
+        "operationId": "FEE_CONCESSION",
+        "summary": "Concession/waiver (goes to approvals above threshold)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "approvalId": "apr_10",
+                  "status": "PENDING",
+                  "estimatedAmount": 150
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fees/dues": {
+      "get": {
+        "operationId": "FEE_DUES",
+        "summary": "Defaulters list",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "studentId": "stu_01",
+                      "name": "Aarav Sharma",
+                      "className": "Class 5-A",
+                      "guardianName": "Rakesh Sharma",
+                      "guardianPhone": "+919811111111",
+                      "totalDue": 4500,
+                      "oldestDueDate": "2026-09-10",
+                      "overdueDays": 63
+                    }
+                  ],
+                  "totals": {
+                    "due": 640000,
+                    "students": 120
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fees/reminders": {
+      "post": {
+        "operationId": "FEE_REMINDERS_SEND",
+        "summary": "Send due reminders to selected students' guardians",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "queued": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fees/summary": {
+      "get": {
+        "operationId": "FEE_SUMMARY",
+        "summary": "Fee module landing cards",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "collectedToday": 84500,
+                  "collectedThisMonth": 920000,
+                  "totalDue": 640000,
+                  "overdue": 210000,
+                  "collectionRatePercent": 78.5,
+                  "byMode": [
+                    {
+                      "mode": "UPI",
+                      "amount": 40000
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fees/online/initiate": {
+      "post": {
+        "operationId": "FEE_ONLINE_INITIATE",
+        "summary": "Parent pays online",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "orderId": "ord_77",
+                  "gateway": "RAZORPAY",
+                  "amount": 1550,
+                  "gatewayPayload": {
+                    "key": "rzp_test_x",
+                    "orderId": "order_x"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fees/online/confirm": {
+      "post": {
+        "operationId": "FEE_ONLINE_CONFIRM",
+        "summary": "Confirm after gateway",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/FeePayment"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/communication/notices": {
+      "get": {
+        "operationId": "NOTICES_LIST",
+        "summary": "Sent/scheduled notices",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/Notice"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "NOTICE_CREATE",
+        "summary": "Compose and send/schedule notice via selected channels",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Notice"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/communication/notices/{noticeId}": {
+      "get": {
+        "operationId": "NOTICE_GET",
+        "summary": "Notice with delivery report",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "notice": {
+                    "$ref": "#/components/entities/Notice"
+                  },
+                  "recipients": [
+                    {
+                      "userId": "usr_88",
+                      "name": "Rakesh Sharma",
+                      "channel": "SMS",
+                      "status": "DELIVERED",
+                      "readAt": null
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "NOTICE_DELETE",
+        "summary": "Delete or cancel scheduled",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/communication/recipient-count": {
+      "post": {
+        "operationId": "NOTICE_RECIPIENT_COUNT",
+        "summary": "Live recipient count while composing",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "count": 36,
+                  "withoutContact": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/communication/templates": {
+      "get": {
+        "operationId": "TEMPLATES_LIST",
+        "summary": "Message templates",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "id": "tpl_fee_due",
+                      "name": "Fee due reminder",
+                      "channel": "SMS",
+                      "body": "Dear {{guardianName}}, fee of Rs {{amount}} for {{studentName}} is due.",
+                      "variables": [
+                        "guardianName",
+                        "amount",
+                        "studentName"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/communication/templates/{templateId}": {
+      "put": {
+        "operationId": "TEMPLATE_UPSERT",
+        "summary": "Create/update template",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "tpl_fee_due",
+                  "name": "Fee due reminder",
+                  "channel": "SMS",
+                  "body": "Dear {{guardianName}}, fee of Rs {{amount}} is due.",
+                  "variables": [
+                    "guardianName",
+                    "amount"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/communication/threads": {
+      "get": {
+        "operationId": "THREADS_LIST",
+        "summary": "Teacher-parent chat threads for current user",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/Thread"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "THREAD_CREATE",
+        "summary": "Start thread with parent of a student",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Thread"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/communication/threads/{threadId}/messages": {
+      "get": {
+        "operationId": "THREAD_MESSAGES",
+        "summary": "Messages (cursor)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/Message"
+                    }
+                  ],
+                  "nextCursor": null
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "THREAD_SEND",
+        "summary": "Send message",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Message"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/communication/threads/{threadId}/read": {
+      "post": {
+        "operationId": "THREAD_READ",
+        "summary": "Mark thread read",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/portal/notices": {
+      "get": {
+        "operationId": "PORTAL_NOTICES",
+        "summary": "Notices visible to parent/student",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/Notice"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/roles": {
+      "get": {
+        "operationId": "ROLES_LIST",
+        "summary": "Roles",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/Role"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "ROLE_CREATE",
+        "summary": "Create custom role",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Role"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/roles/{roleId}": {
+      "put": {
+        "operationId": "ROLE_UPDATE",
+        "summary": "Update role permissions (system roles: only non-critical perms editable)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Role"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "ROLE_DELETE",
+        "summary": "Delete custom role (blocked if users assigned)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/permissions": {
+      "get": {
+        "operationId": "PERMISSIONS_CATALOG",
+        "summary": "Grouped permission catalog for matrix UI",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "groups": [
+                    {
+                      "module": "Students",
+                      "permissions": [
+                        {
+                          "key": "students.view",
+                          "label": "View students"
+                        },
+                        {
+                          "key": "students.create",
+                          "label": "Add students"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users": {
+      "get": {
+        "operationId": "USERS_LIST",
+        "summary": "Administrators/users",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/User"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/invite": {
+      "post": {
+        "operationId": "USER_INVITE",
+        "summary": "Invite admin/user by email with role",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "user": {
+                    "$ref": "#/components/entities/User"
+                  },
+                  "inviteLink": "https://app/accept-invite?token=abc"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{userId}": {
+      "put": {
+        "operationId": "USER_UPDATE",
+        "summary": "Change role/details",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/User"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{userId}/status": {
+      "patch": {
+        "operationId": "USER_STATUS",
+        "summary": "Activate/deactivate",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/User"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{userId}/reset-password": {
+      "post": {
+        "operationId": "USER_RESET_PASSWORD",
+        "summary": "Admin triggers reset link",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Reset link sent"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/accept-invite": {
+      "post": {
+        "operationId": "INVITE_ACCEPT",
+        "summary": "Invitee sets password",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "accessToken": "jwt...",
+                  "refreshToken": "rt..."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports": {
+      "get": {
+        "operationId": "REPORTS_CATALOG",
+        "summary": "All available reports grouped by module (filtered by permission)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/ReportDefinition"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/{reportKey}/data": {
+      "post": {
+        "operationId": "REPORT_DATA",
+        "summary": "Run report and get columns + rows (paginated preview). Client exports to xlsx/pdf/csv from this shape.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "title": "Student List",
+                  "generatedAt": "2026-11-12T10:00:00Z",
+                  "filtersApplied": [
+                    {
+                      "label": "Class",
+                      "value": "Class 5"
+                    }
+                  ],
+                  "columns": [
+                    {
+                      "key": "admissionNo",
+                      "label": "Admission No",
+                      "type": "string",
+                      "width": 18
+                    },
+                    {
+                      "key": "fullName",
+                      "label": "Name",
+                      "type": "string",
+                      "width": 28
+                    },
+                    {
+                      "key": "feeDue",
+                      "label": "Fee Due",
+                      "type": "currency",
+                      "width": 14,
+                      "total": true
+                    }
+                  ],
+                  "rows": [
+                    {
+                      "admissionNo": "ADM-2026-0001",
+                      "fullName": "Aarav Sharma",
+                      "feeDue": 4500
+                    }
+                  ],
+                  "totals": {
+                    "feeDue": 4500
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/{reportKey}/export": {
+      "post": {
+        "operationId": "REPORT_EXPORT_JOB",
+        "summary": "Server-side export for large reports (>5000 rows). Small ones are exported on client.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "jobId": "job_01",
+                  "status": "QUEUED"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/jobs/{jobId}": {
+      "get": {
+        "operationId": "REPORT_EXPORT_STATUS",
+        "summary": "Poll export job",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "jobId": "job_01",
+                  "status": "COMPLETED",
+                  "progress": 100,
+                  "downloadUrl": "https://files/report.xlsx",
+                  "expiresAt": "2026-11-13T10:00:00Z"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bulk/templates/{entity}": {
+      "get": {
+        "operationId": "BULK_TEMPLATE",
+        "summary": "Download blank xlsx/csv template with headers, sample row, and validation hints (entity: STUDENTS|STAFF|FEE_ASSIGNMENTS|MARKS|GUARDIANS)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": "<binary file>"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bulk/imports": {
+      "post": {
+        "operationId": "BULK_UPLOAD",
+        "summary": "Upload file; server parses and validates all rows (no data written yet)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/ImportJob"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "BULK_HISTORY",
+        "summary": "Past imports",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/ImportJob"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bulk/imports/{importId}": {
+      "get": {
+        "operationId": "BULK_GET",
+        "summary": "Job status + summary (poll)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/ImportJob"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bulk/imports/{importId}/rows": {
+      "get": {
+        "operationId": "BULK_ROWS",
+        "summary": "Preview rows with per-row validation",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "row": 5,
+                      "status": "INVALID",
+                      "values": {
+                        "firstName": "Diya",
+                        "dob": "32-13-2014"
+                      },
+                      "errors": [
+                        {
+                          "field": "dob",
+                          "message": "Invalid date. Use YYYY-MM-DD"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bulk/imports/{importId}/commit": {
+      "post": {
+        "operationId": "BULK_COMMIT",
+        "summary": "Insert valid rows (invalid skipped). Idempotent.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "importId": "imp_01",
+                  "status": "COMMITTING"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bulk/imports/{importId}/error-report": {
+      "get": {
+        "operationId": "BULK_ERROR_REPORT",
+        "summary": "Download xlsx of failed rows with error column so user can fix and re-upload",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": "<binary file>"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bulk/imports/{importId}/cancel": {
+      "post": {
+        "operationId": "BULK_CANCEL",
+        "summary": "Cancel before commit",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/settings/school": {
+      "get": {
+        "operationId": "SCHOOL_PROFILE_GET",
+        "summary": "School profile",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Tenant"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "SCHOOL_PROFILE_UPDATE",
+        "summary": "Update profile/branding",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "$ref": "#/components/entities/Tenant"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/preferences": {
+      "get": {
+        "operationId": "PREFERENCES_GET",
+        "summary": "App preferences",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "admissionNoFormat": "ADM-{YYYY}-{SEQ:4}",
+                  "receiptNoFormat": "RCPT-{YYYY}-{SEQ:5}",
+                  "attendanceCutoffTime": "10:00",
+                  "lateFeeEnabled": true,
+                  "blockAdmitCardOnDues": false,
+                  "concessionApprovalThresholdPercent": 10,
+                  "notifyParentOnAbsent": true,
+                  "defaultChannels": [
+                    "IN_APP",
+                    "SMS"
+                  ],
+                  "workingDays": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                  ],
+                  "dateFormat": "DD/MM/YYYY",
+                  "language": "en"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "PREFERENCES_UPDATE",
+        "summary": "Update preferences",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Preferences saved"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/files": {
+      "post": {
+        "operationId": "FILE_UPLOAD",
+        "summary": "Generic upload (multipart). Max 10MB; png/jpg/pdf/xlsx/csv/docx",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "fil_01",
+                  "name": "photo.png",
+                  "url": "https://files/photo.png",
+                  "size": 20480,
+                  "mimeType": "image/png"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/audit-logs": {
+      "get": {
+        "operationId": "AUDIT_LOGS",
+        "summary": "Who did what",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "$ref": "#/components/entities/AuditLog"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/children": {
+      "get": {
+        "operationId": "PORTAL_CHILDREN",
+        "summary": "Children linked to logged-in parent",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "id": "stu_01",
+                      "name": "Aarav Sharma",
+                      "className": "Class 5-A",
+                      "photoUrl": null
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/children/{studentId}/overview": {
+      "get": {
+        "operationId": "PORTAL_OVERVIEW",
+        "summary": "Single-screen overview",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "student": {
+                    "id": "stu_01",
+                    "name": "Aarav Sharma",
+                    "className": "Class 5-A"
+                  },
+                  "attendance": {
+                    "monthPercent": 94.5,
+                    "todayStatus": "PRESENT"
+                  },
+                  "fees": {
+                    "totalDue": 4500,
+                    "nextDueDate": "2026-12-10",
+                    "nextDueAmount": 1500
+                  },
+                  "latestResult": {
+                    "examName": "Unit Test 1",
+                    "percentage": 88
+                  },
+                  "timetableToday": [
+                    {
+                      "period": "Period 1",
+                      "subject": "Mathematics",
+                      "teacher": "Anita Verma"
+                    }
+                  ],
+                  "notices": [
+                    {
+                      "id": "ntc_01",
+                      "title": "Annual Day Rehearsal",
+                      "sentAt": "2026-11-12T10:00:00Z"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/children/{studentId}/attendance": {
+      "get": {
+        "operationId": "PORTAL_ATTENDANCE",
+        "summary": "Monthly calendar attendance",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "month": "2026-11",
+                  "marks": {
+                    "2026-11-02": "PRESENT",
+                    "2026-11-03": "ABSENT"
+                  },
+                  "percent": 94.5
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/children/{studentId}/fees": {
+      "get": {
+        "operationId": "PORTAL_FEES",
+        "summary": "Fee ledger for parent",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "totalDue": 4500,
+                  "lines": [
+                    {
+                      "$ref": "#/components/entities/FeeLine"
+                    }
+                  ],
+                  "payments": [
+                    {
+                      "$ref": "#/components/entities/FeePayment"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/children/{studentId}/leave": {
+      "post": {
+        "operationId": "PORTAL_LEAVE_APPLY",
+        "summary": "Parent applies leave for child (visible to class teacher)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "sle_01",
+                  "status": "PENDING"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "User": {
+        "id": "usr_01",
+        "name": "Shubham Tiwari",
+        "email": "shubham@school.edu",
+        "phone": "+919876543210",
+        "avatarUrl": null,
+        "roleId": "rol_01",
+        "roleKey": "SUPER_ADMIN",
+        "roleName": "Super Admin",
+        "status": "ACTIVE",
+        "linkedStaffId": null,
+        "linkedStudentIds": [],
+        "lastLoginAt": "2026-11-12T08:30:00Z",
+        "createdAt": "2026-01-10T10:00:00Z"
+      },
+      "Tenant": {
+        "id": "ten_01",
+        "name": "Sunrise Public School",
+        "slug": "sunrise",
+        "logoUrl": null,
+        "brandColor": "#4F46E5",
+        "board": "CBSE",
+        "udiseCode": "09XXXXXXXX",
+        "address": {
+          "line1": "12 Civil Lines",
+          "city": "Prayagraj",
+          "state": "Uttar Pradesh",
+          "pincode": "211001"
+        },
+        "phone": "+915322000000",
+        "email": "info@sunrise.edu",
+        "timezone": "Asia/Kolkata",
+        "currency": "INR",
+        "status": "TRIAL",
+        "createdAt": "2026-11-01T10:00:00Z"
+      },
+      "Plan": {
+        "id": "pln_growth",
+        "code": "GROWTH",
+        "name": "Growth",
+        "description": "For schools up to 1000 students",
+        "priceMonthly": 2999,
+        "priceYearly": 29990,
+        "currency": "INR",
+        "trialDays": 14,
+        "limits": {
+          "students": 1000,
+          "staff": 100,
+          "storageGb": 20,
+          "smsCredits": 2000
+        },
+        "features": [
+          "Attendance",
+          "Fees",
+          "Exams",
+          "Communication",
+          "Reports"
+        ],
+        "isActive": true
+      },
+      "Subscription": {
+        "id": "sub_01",
+        "planId": "pln_growth",
+        "planName": "Growth",
+        "status": "TRIAL",
+        "billingCycle": "YEARLY",
+        "trialEndsAt": "2026-11-15",
+        "currentPeriodStart": "2026-11-01",
+        "currentPeriodEnd": "2027-10-31",
+        "autoRenew": true,
+        "usage": {
+          "students": 342,
+          "staff": 28,
+          "storageGb": 2.4,
+          "smsCredits": 120
+        },
+        "limits": {
+          "students": 1000,
+          "staff": 100,
+          "storageGb": 20,
+          "smsCredits": 2000
+        }
+      },
+      "AcademicSession": {
+        "id": "ses_2627",
+        "name": "2026-27",
+        "startDate": "2026-04-01",
+        "endDate": "2027-03-31",
+        "isActive": true,
+        "isLocked": false
+      },
+      "Class": {
+        "id": "cls_05",
+        "name": "Class 5",
+        "displayOrder": 5,
+        "sections": [
+          {
+            "id": "sec_05A",
+            "name": "A",
+            "capacity": 40,
+            "classTeacherId": "stf_21",
+            "classTeacherName": "Anita Verma",
+            "studentCount": 36
+          }
+        ],
+        "subjectIds": [
+          "sub_math",
+          "sub_eng"
+        ]
+      },
+      "Subject": {
+        "id": "sbj_math",
+        "name": "Mathematics",
+        "code": "MATH",
+        "type": "THEORY",
+        "isElective": false
+      },
+      "Guardian": {
+        "id": "grd_01",
+        "name": "Rakesh Sharma",
+        "relation": "FATHER",
+        "phone": "+919811111111",
+        "email": "rakesh@mail.com",
+        "occupation": "Engineer",
+        "isPrimary": true,
+        "userId": "usr_88"
+      },
+      "Student": {
+        "id": "stu_01",
+        "admissionNo": "ADM-2026-0001",
+        "rollNo": "12",
+        "firstName": "Aarav",
+        "lastName": "Sharma",
+        "fullName": "Aarav Sharma",
+        "gender": "MALE",
+        "dob": "2015-06-14",
+        "bloodGroup": "B+",
+        "classId": "cls_05",
+        "className": "Class 5",
+        "sectionId": "sec_05A",
+        "sectionName": "A",
+        "admissionDate": "2026-04-05",
+        "status": "ACTIVE",
+        "photoUrl": null,
+        "address": {
+          "line1": "45 MG Road",
+          "city": "Prayagraj",
+          "state": "Uttar Pradesh",
+          "pincode": "211002"
+        },
+        "category": "GENERAL",
+        "guardians": [
+          {
+            "$ref": "#/components/entities/Guardian"
+          }
+        ],
+        "attendancePercent": 94.5,
+        "feeDue": 4500,
+        "createdAt": "2026-04-05T10:00:00Z"
+      },
+      "Staff": {
+        "id": "stf_21",
+        "employeeCode": "EMP-0021",
+        "firstName": "Anita",
+        "lastName": "Verma",
+        "fullName": "Anita Verma",
+        "gender": "FEMALE",
+        "dob": "1988-03-02",
+        "email": "anita@school.edu",
+        "phone": "+919822222222",
+        "designation": "TGT Maths",
+        "department": "Academics",
+        "joiningDate": "2021-06-01",
+        "qualification": "M.Sc, B.Ed",
+        "salaryGrade": null,
+        "roleId": "rol_teacher",
+        "status": "ACTIVE",
+        "photoUrl": null,
+        "assignments": [
+          {
+            "classId": "cls_05",
+            "sectionId": "sec_05A",
+            "subjectId": "sbj_math",
+            "isClassTeacher": true
+          }
+        ],
+        "userId": "usr_21"
+      },
+      "StudentAttendanceRecord": {
+        "studentId": "stu_01",
+        "rollNo": "12",
+        "name": "Aarav Sharma",
+        "status": "PRESENT",
+        "remark": null,
+        "markedBy": "usr_21",
+        "markedAt": "2026-11-12T09:10:00Z"
+      },
+      "StaffAttendanceRecord": {
+        "staffId": "stf_21",
+        "name": "Anita Verma",
+        "status": "PRESENT",
+        "checkIn": "08:45",
+        "checkOut": "15:30",
+        "remark": null
+      },
+      "LeaveRequest": {
+        "id": "lev_01",
+        "staffId": "stf_21",
+        "staffName": "Anita Verma",
+        "type": "CASUAL",
+        "fromDate": "2026-11-20",
+        "toDate": "2026-11-21",
+        "days": 2,
+        "reason": "Family function",
+        "status": "PENDING",
+        "decidedBy": null,
+        "decidedAt": null,
+        "decisionNote": null,
+        "createdAt": "2026-11-12T09:00:00Z"
+      },
+      "CalendarEvent": {
+        "id": "evt_01",
+        "title": "Annual Day",
+        "type": "EVENT",
+        "startDate": "2026-11-25",
+        "endDate": "2026-11-25",
+        "allDay": true,
+        "startTime": null,
+        "endTime": null,
+        "description": "Annual function",
+        "audience": "ALL",
+        "isHoliday": false,
+        "color": "#6366F1"
+      },
+      "Exam": {
+        "id": "exm_01",
+        "name": "Half Yearly 2026",
+        "type": "TERM",
+        "sessionId": "ses_2627",
+        "status": "SCHEDULED",
+        "startDate": "2026-12-01",
+        "endDate": "2026-12-12",
+        "classIds": [
+          "cls_05"
+        ],
+        "gradeScaleId": "grs_01",
+        "weightage": 50,
+        "isPublished": false,
+        "publishedAt": null,
+        "createdAt": "2026-11-10T10:00:00Z"
+      },
+      "ExamPaper": {
+        "id": "pap_01",
+        "examId": "exm_01",
+        "classId": "cls_05",
+        "subjectId": "sbj_math",
+        "subjectName": "Mathematics",
+        "date": "2026-12-02",
+        "startTime": "10:00",
+        "endTime": "12:00",
+        "maxMarks": 100,
+        "passMarks": 33,
+        "room": "R-101",
+        "isMarksLocked": false
+      },
+      "MarksRow": {
+        "studentId": "stu_01",
+        "rollNo": "12",
+        "name": "Aarav Sharma",
+        "marks": 87.5,
+        "isAbsent": false,
+        "remark": null,
+        "grade": "A1"
+      },
+      "ReportCard": {
+        "student": {
+          "id": "stu_01",
+          "name": "Aarav Sharma",
+          "admissionNo": "ADM-2026-0001",
+          "className": "Class 5",
+          "sectionName": "A",
+          "rollNo": "12"
+        },
+        "exam": {
+          "id": "exm_01",
+          "name": "Half Yearly 2026"
+        },
+        "subjects": [
+          {
+            "subjectName": "Mathematics",
+            "maxMarks": 100,
+            "marks": 87.5,
+            "grade": "A1",
+            "isAbsent": false
+          }
+        ],
+        "totalMarks": 450,
+        "maxTotal": 500,
+        "percentage": 90,
+        "grade": "A1",
+        "rank": 3,
+        "attendancePercent": 94.5,
+        "teacherRemark": "Excellent",
+        "result": "PASS",
+        "publishedAt": "2026-12-20T10:00:00Z"
+      },
+      "FeeCategory": {
+        "id": "fcat_tuition",
+        "name": "Tuition Fee",
+        "code": "TUI",
+        "isRefundable": false,
+        "isActive": true
+      },
+      "FeeStructure": {
+        "id": "fst_01",
+        "name": "Class 5 - 2026-27",
+        "classIds": [
+          "cls_05"
+        ],
+        "sessionId": "ses_2627",
+        "items": [
+          {
+            "categoryId": "fcat_tuition",
+            "categoryName": "Tuition Fee",
+            "amount": 1500,
+            "frequency": "MONTHLY",
+            "dueDay": 10,
+            "lateFeePerDay": 5
+          }
+        ],
+        "totalPerYear": 18000,
+        "isActive": true
+      },
+      "FeeLine": {
+        "id": "fln_01",
+        "studentId": "stu_01",
+        "categoryName": "Tuition Fee",
+        "period": "2026-11",
+        "dueDate": "2026-11-10",
+        "amount": 1500,
+        "concession": 0,
+        "lateFee": 50,
+        "paid": 0,
+        "balance": 1550,
+        "status": "OVERDUE"
+      },
+      "FeePayment": {
+        "id": "pay_01",
+        "receiptNo": "RCPT-2026-00123",
+        "studentId": "stu_01",
+        "studentName": "Aarav Sharma",
+        "className": "Class 5-A",
+        "amount": 3000,
+        "mode": "UPI",
+        "reference": "UPI12345",
+        "paidAt": "2026-11-12T10:15:00Z",
+        "collectedBy": "usr_05",
+        "lines": [
+          {
+            "feeLineId": "fln_01",
+            "amountApplied": 1550
+          }
+        ],
+        "status": "SUCCESS",
+        "remark": null
+      },
+      "Notice": {
+        "id": "ntc_01",
+        "title": "Annual Day Rehearsal",
+        "body": "Rehearsal on Monday.",
+        "audience": "CLASS",
+        "classIds": [
+          "cls_05"
+        ],
+        "sectionIds": [],
+        "userIds": [],
+        "channels": [
+          "IN_APP",
+          "SMS"
+        ],
+        "attachments": [
+          {
+            "name": "schedule.pdf",
+            "url": "https://files/x.pdf"
+          }
+        ],
+        "scheduledAt": null,
+        "sentAt": "2026-11-12T10:00:00Z",
+        "createdBy": "usr_01",
+        "stats": {
+          "recipients": 36,
+          "delivered": 35,
+          "read": 20,
+          "failed": 1
+        },
+        "status": "SENT"
+      },
+      "Thread": {
+        "id": "thr_01",
+        "subject": "Aarav - homework doubt",
+        "participants": [
+          {
+            "userId": "usr_21",
+            "name": "Anita Verma",
+            "role": "TEACHER"
+          },
+          {
+            "userId": "usr_88",
+            "name": "Rakesh Sharma",
+            "role": "PARENT"
+          }
+        ],
+        "studentId": "stu_01",
+        "lastMessage": {
+          "text": "Please check the worksheet",
+          "at": "2026-11-12T11:00:00Z",
+          "senderId": "usr_21"
+        },
+        "unreadCount": 1
+      },
+      "Message": {
+        "id": "msg_01",
+        "threadId": "thr_01",
+        "senderId": "usr_21",
+        "senderName": "Anita Verma",
+        "text": "Please check the worksheet",
+        "attachments": [],
+        "sentAt": "2026-11-12T11:00:00Z",
+        "readBy": [
+          "usr_21"
+        ]
+      },
+      "Role": {
+        "id": "rol_teacher",
+        "key": "TEACHER",
+        "name": "Teacher",
+        "description": "Class and subject teacher",
+        "isSystem": true,
+        "permissions": [
+          "students.view",
+          "attendance.student.mark",
+          "exams.marks.enter",
+          "communication.send"
+        ],
+        "userCount": 18
+      },
+      "Notification": {
+        "id": "ntf_01",
+        "title": "Leave request",
+        "body": "Anita Verma requested leave",
+        "type": "APPROVAL",
+        "link": "/approvals/apr_01",
+        "isRead": false,
+        "createdAt": "2026-11-12T09:00:00Z"
+      },
+      "Approval": {
+        "id": "apr_01",
+        "type": "LEAVE",
+        "title": "Leave - Anita Verma (2 days)",
+        "requestedBy": {
+          "id": "usr_21",
+          "name": "Anita Verma"
+        },
+        "entityId": "lev_01",
+        "amount": null,
+        "status": "PENDING",
+        "createdAt": "2026-11-12T09:00:00Z"
+      },
+      "ImportJob": {
+        "id": "imp_01",
+        "entity": "STUDENTS",
+        "fileName": "students.xlsx",
+        "status": "VALIDATED_WITH_ERRORS",
+        "summary": {
+          "total": 100,
+          "valid": 97,
+          "invalid": 3,
+          "duplicates": 1
+        },
+        "createdBy": "usr_01",
+        "createdAt": "2026-11-12T10:00:00Z",
+        "completedAt": null
+      },
+      "AuditLog": {
+        "id": "aud_01",
+        "actor": {
+          "id": "usr_01",
+          "name": "Shubham Tiwari",
+          "role": "SUPER_ADMIN"
+        },
+        "action": "STUDENT_CREATED",
+        "entity": "Student",
+        "entityId": "stu_01",
+        "ip": "1.2.3.4",
+        "changes": {
+          "before": null,
+          "after": {
+            "admissionNo": "ADM-2026-0001"
+          }
+        },
+        "at": "2026-11-12T10:00:00Z"
+      },
+      "ReportDefinition": {
+        "key": "student-list",
+        "name": "Student List",
+        "module": "STUDENTS",
+        "description": "All students with class and guardian",
+        "filters": [
+          {
+            "key": "classId",
+            "type": "select",
+            "label": "Class",
+            "required": false
+          },
+          {
+            "key": "status",
+            "type": "select",
+            "label": "Status",
+            "required": false
+          }
+        ],
+        "formats": [
+          "xlsx",
+          "pdf",
+          "csv"
+        ]
+      },
+      "TimetableEntry": {
+        "id": "ttb_01",
+        "classId": "cls_05",
+        "sectionId": "sec_05A",
+        "dayOfWeek": 1,
+        "periodId": "per_01",
+        "subjectId": "sbj_math",
+        "subjectName": "Mathematics",
+        "teacherId": "stf_21",
+        "teacherName": "Anita Verma",
+        "room": "R-101"
+      },
+      "Period": {
+        "id": "per_01",
+        "name": "Period 1",
+        "startTime": "08:30",
+        "endTime": "09:15",
+        "isBreak": false,
+        "order": 1
+      },
+      "GradeScale": {
+        "id": "grs_01",
+        "name": "CBSE 9-point",
+        "bands": [
+          {
+            "grade": "A1",
+            "minPercent": 91,
+            "maxPercent": 100,
+            "gradePoint": 10
+          },
+          {
+            "grade": "A2",
+            "minPercent": 81,
+            "maxPercent": 90.99,
+            "gradePoint": 9
+          }
+        ]
+      }
+    }
+  }
+}

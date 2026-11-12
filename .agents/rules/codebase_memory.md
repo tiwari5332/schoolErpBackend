@@ -19,23 +19,17 @@ always_on: true
 ---
 
 ## Technical Summary
-- **Stack**: Node.js 18+, Express.js v4.19, TypeScript v5.5, PostgreSQL (`pg` raw queries), JWT (HS256), bcryptjs, Multer, node-cron, Zod.
-- **Project Structure**: Feature-wise modules under `src/modules/`:
-  - `academic` -> `academic.controller.ts`, `academic.service.ts`, `academic.route.ts`
-  - `session` -> `session.controller.ts`, `session.service.ts`, `session.route.ts`, `session.dto.ts`
-  - `me` -> `me.controller.ts`, `me.route.ts`
-  - `dashboard` -> `dashboard.controller.ts`, `dashboard.service.ts`, `dashboard.route.ts`, `dashboard.dto.ts`
-  - `calendar` -> `calendar.controller.ts`, `calendar.service.ts`, `calendar.route.ts`
-  - `auth` -> `auth.controller.ts`, `auth.service.ts`, `auth.route.ts`
-  - `billing` -> `billing.controller.ts`, `billing.service.ts`, `billing.route.ts`
-  - `fee` -> `fee.controller.ts`, `fee.service.ts`, `fee.route.ts`
-  - `onboarding` -> `onboarding.controller.ts`, `onboarding.service.ts`, `onboarding.route.ts`
-  - `role` -> `role.controller.ts`, `role.service.ts`, `role.route.ts`
-  - `teacher` -> `teacher.controller.ts`, `teacher.service.ts`, `teacher.route.ts`, `teacher.dto.ts`
-  - `student` -> `student.controller.ts`, `student.service.ts`, `student.route.ts`, `student.dto.ts`
-  - `communication` -> `communication.controller.ts`, `communication.service.ts`, `communication.routes.ts`
-  - `notification` -> `notification.service.ts`, `notification.controller.ts`, `notification.route.ts`
-  - `attendance` -> `attendance.controller.ts`, `attendance.service.ts`, `attendance.route.ts`
+- **Primary Stack (EduTrio Modern Monolith)**: Node.js 22 LTS, NestJS 10.4+ with Fastify v4 adapter (`@nestjs/platform-fastify`), TypeScript v5.9, PostgreSQL 16 with Prisma ORM (`@prisma/client`), Redis 7 (`ioredis`) + BullMQ v5, Zod v3.25 validation, Argon2id (`argon2`) password hashing, JWT 15m + rotating opaque refresh tokens with family reuse detection.
+- **Contract Source of Truth**: `api-contract.json` (175 endpoints across 16 modules). Generated artefacts in `src/contract/generated/`: `routes.ts`, `enums.ts`, `fixtures.ts`, `openapi.json`, `schemas.ts`.
+- **Runtime Entrypoints**:
+  - `src/main.ts`: Fastify HTTP API server listening on `/api/v1` with Helmet, CORS, Rate Limit, and Swagger UI at `/docs`.
+  - `src/worker.ts`: BullMQ background worker process for imports, exports, notifications, reminders, outbox relay.
+- **Project Structure**:
+  - `src/contract/`: Decorators (`@Endpoint()`), coverage checking (`ContractCoverageChecker`), generated routes/enums/fixtures.
+  - `src/common/`: Domain errors (`DomainError`), response interceptors (`EnvelopeInterceptor`), filters (`GlobalExceptionFilter`), decorators (`@Public()`, `@RequirePermission()`, `@RequireRole()`, `@CurrentUser()`), guards (`AuthGuard`, `PermissionsGuard`, `SubscriptionGuard`, `SessionLockGuard`), utilities (`Clock`, `IdGenerator`, `Money`, `PaginationUtil`, `IdempotencyService`).
+  - `src/infra/`: `PrismaService`, `RedisService`, `QueueService`, `StorageService`, `TenantTx`, `TenantContext`.
+  - `src/modules/`: Feature modules mapping 1:1 to `api-contract.json` (health, auth, onboarding, subscription, platform, roles, users, academic, calendar, students, staff, attendance, timetable, exams, fees, communication, dashboard, reports, bulk, settings, portal) [All Phases B0 through B8 complete; 175/175 endpoints active with 100% contract coverage].
+- **Legacy Prototype**: Archived in `legacy/` (Express controllers, routes, middleware, and raw SQL queries) preserved for reference.
 - **Tenancy**: Multi-tenant database isolation via tenant helper functions and middleware (`getTenantSchoolId`, `tenantInterceptor`).
 - **Security**: 
   0. `requestResponseLogger` (Order 0) tracks request/response logs.

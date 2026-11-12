@@ -1,53 +1,61 @@
-import { Request, Response, NextFunction } from 'express';
-import { getTenantSchoolId } from '../../middleware/tenant.middleware';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { OnboardingService } from './onboarding.service';
-import { ApiResponse, BusinessRuleException } from '../../utils/response';
+import { Endpoint } from '../../contract/endpoint.decorator';
+import { Public } from '../../common/decorators/public.decorator';
+import { CurrentUser, CurrentUserPayload } from '../../common/decorators/current-user.decorator';
+import { RegisterTenantSchema, RegisterTenantDto } from './dto/onboarding.dto';
+import { DomainError } from '../../common/domain.error';
 
+function validate<T>(schema: any, data: unknown): T {
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    const details = result.error.errors.map((e: any) => ({
+      field: e.path.join('.'),
+      message: e.message,
+    }));
+    throw new DomainError('VALIDATION_ERROR', 'Validation failed', details);
+  }
+  return result.data as T;
+}
+
+@Controller()
 export class OnboardingController {
-  static async onboardStudent(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const result = await OnboardingService.onboardStudent(schoolId, req.body);
-      return ApiResponse.success(res, result, 201);
-    } catch (err) {
-      next(err);
-    }
+  constructor(private readonly onboardingService: OnboardingService) {}
+
+  @Public()
+  @Endpoint('PLANS_LIST')
+  @Get('/public/plans')
+  async getPlans() {
+    return this.onboardingService.getPublicPlans();
   }
 
-  static async bulkOnboardStudents(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const sectionId = (req.query.sectionId as string) || req.body.sectionId;
-      if (!req.file) {
-        throw new BusinessRuleException('No CSV file uploaded', 400);
-      }
-      const result = await OnboardingService.bulkOnboardStudents(schoolId, sectionId, req.file.buffer);
-      return ApiResponse.success(res, result);
-    } catch (err) {
-      next(err);
-    }
+  @Public()
+  @Endpoint('TENANT_REGISTER')
+  @Post('/public/schools/register')
+  @HttpCode(HttpStatus.CREATED)
+  async registerSchool(@Body() body: unknown) {
+    const dto = validate<RegisterTenantDto>(RegisterTenantSchema, body);
+    return this.onboardingService.registerSchool(dto);
   }
 
-  static async onboardTeacher(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const result = await OnboardingService.onboardTeacher(schoolId, req.body);
-      return ApiResponse.success(res, result, 201);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('ONBOARDING_STATUS')
+  @Get('/onboarding/status')
+  async getStatus(@CurrentUser() user: CurrentUserPayload) {
+    return this.onboardingService.getOnboardingStatus(user.tenantId);
   }
 
-  static async bulkOnboardTeachers(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      if (!req.file) {
-        throw new BusinessRuleException('No CSV file uploaded', 400);
-      }
-      const result = await OnboardingService.bulkOnboardTeachers(schoolId, req.file.buffer);
-      return ApiResponse.success(res, result);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('ONBOARDING_DISMISS')
+  @Post('/onboarding/dismiss')
+  @HttpCode(HttpStatus.OK)
+  async dismiss(@CurrentUser() user: CurrentUserPayload) {
+    return this.onboardingService.dismissOnboarding(user.tenantId);
   }
 }
+

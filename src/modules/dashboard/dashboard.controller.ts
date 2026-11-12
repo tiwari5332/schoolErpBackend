@@ -1,234 +1,160 @@
-import { Response, NextFunction } from 'express';
-import { ExtendedRequest } from '../../middleware/logger.middleware';
-import { DashboardService } from './dashboard.service';
 import {
-  staffAttendanceQuerySchema,
-  feeTrendQuerySchema,
-} from './dashboard.dto';
-import { ApiResponse, AppError, BusinessRuleException } from '../../utils/response';
-import { DashboardCache } from '../../libs/cache';
-import { ActorType } from '../../config/constants';
-import db from '../../config/database';
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  Query,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import { DashboardService } from './dashboard.service';
+import { Endpoint } from '../../contract/endpoint.decorator';
+import { CurrentUser, CurrentUserPayload } from '../../common/decorators/current-user.decorator';
+import {
+  TrendQuerySchema,
+  ApprovalDecisionSchema,
+  ApprovalsListQuerySchema,
+  GlobalSearchQuerySchema,
+  NotificationsQuerySchema,
+  TrendQueryDto,
+  ApprovalDecisionDto,
+  ApprovalsListQueryDto,
+  GlobalSearchQueryDto,
+  NotificationsQueryDto,
+} from './dto/dashboard.dto';
+import { DomainError } from '../../common/domain.error';
 
+function validate<T>(schema: any, data: unknown): T {
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    const details = result.error.errors.map((e: any) => ({
+      field: e.path.join('.'),
+      message: e.message,
+    }));
+    throw new DomainError('VALIDATION_ERROR', 'Validation failed', details);
+  }
+  return result.data as T;
+}
+
+@Controller()
 export class DashboardController {
-  private static resolveSchoolId(req: ExtendedRequest): string {
-    const headerSchoolId = req.headers['x-school-id'] as string;
-    const userSchoolId = req.user?.schoolId;
-    const schoolId = (req.user?.actorType === ActorType.SUPER_ADMIN && headerSchoolId) ? headerSchoolId : userSchoolId;
+  constructor(private readonly dashboardService: DashboardService) {}
 
-    if (!schoolId) {
-      throw new BusinessRuleException(
-        'School context is required. Please provide a valid tenant token or X-School-Id header.',
-        400,
-        null,
-        'VALIDATION_ERROR'
-      );
-    }
-    return schoolId;
+  @Endpoint('DASH_KPI_STUDENTS')
+  @Get('/dashboard/kpis/students')
+  async getStudentsKpi(@CurrentUser() user: CurrentUserPayload) {
+    return this.dashboardService.getStudentsKpi(user.tenantId);
   }
 
-  private static async checkAccountantRole(actorType: string, actorId: string): Promise<boolean> {
-    const res = await db.query<{ name: string }>(
-      `SELECT r.name FROM actor_role_assignments ara
-       JOIN roles r ON ara.role_id = r.id
-       WHERE ara.actor_type = $1 AND ara.actor_id = $2`,
-      [actorType, actorId]
-    );
-    return res.rows.some((r) => r.name.toUpperCase().includes('ACCOUNTANT'));
+  @Endpoint('DASH_KPI_STAFF')
+  @Get('/dashboard/kpis/staff')
+  async getStaffKpi(@CurrentUser() user: CurrentUserPayload) {
+    return this.dashboardService.getStaffKpi(user.tenantId);
   }
 
-  /**
-   * 1. GET /api/dashboard/summary (cache 60s per school+session)
-   */
-  static async getSummary(req: ExtendedRequest, res: Response, next: NextFunction) {
-    try {
-      const schoolId = DashboardController.resolveSchoolId(req);
-      const sessionId = req.academicSessionId || null;
-
-      // Role check: Teacher cannot see fees
-      const canViewFees = req.user?.actorType !== ActorType.TEACHER;
-
-      const { today } = await DashboardService.getSchoolTimezoneAndToday(schoolId);
-      const cacheKey = DashboardCache.buildKey(schoolId, sessionId || 'default', `summary:${canViewFees}`, today);
-
-      const cached = DashboardCache.get(cacheKey);
-      if (cached) {
-        res.setHeader('Cache-Control', 'private, max-age=60');
-        res.setHeader('ETag', cached.etag);
-        if (req.headers['if-none-match'] === cached.etag) {
-          return res.status(304).end();
-        }
-        return ApiResponse.success(res, cached.data);
-      }
-
-      const summary = await DashboardService.getSummary(schoolId, sessionId, canViewFees);
-      const etag = DashboardCache.set(cacheKey, summary, 60);
-
-      res.setHeader('Cache-Control', 'private, max-age=60');
-      res.setHeader('ETag', etag);
-
-      return ApiResponse.success(res, summary);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('DASH_KPI_FEES_TODAY')
+  @Get('/dashboard/kpis/fees-today')
+  async getFeesTodayKpi(@CurrentUser() user: CurrentUserPayload) {
+    return this.dashboardService.getFeesTodayKpi(user.tenantId);
   }
 
-  /**
-   * 2. GET /api/dashboard/staff-attendance?date=YYYY-MM-DD&limit=5 (cache 60s)
-   */
-  static async getStaffAttendance(req: ExtendedRequest, res: Response, next: NextFunction) {
-    try {
-      const schoolId = DashboardController.resolveSchoolId(req);
-
-      // Role check: Accountant cannot see staff attendance
-      if (req.user) {
-        const isAccountant = await DashboardController.checkAccountantRole(req.user.actorType, req.user.actorId);
-        if (isAccountant) {
-          throw new AppError(
-            'Accountants are not permitted to view staff attendance',
-            403,
-            null,
-            true,
-            'WIDGET_FORBIDDEN'
-          );
-        }
-      }
-
-      const query = staffAttendanceQuerySchema.parse(req.query);
-      const { today } = await DashboardService.getSchoolTimezoneAndToday(schoolId);
-      const date = query.date || today;
-
-      const cacheKey = DashboardCache.buildKey(schoolId, 'global', `staff-att:${date}:${query.limit}`, date);
-      const cached = DashboardCache.get(cacheKey);
-
-      if (cached) {
-        res.setHeader('Cache-Control', 'private, max-age=60');
-        res.setHeader('ETag', cached.etag);
-        if (req.headers['if-none-match'] === cached.etag) {
-          return res.status(304).end();
-        }
-        return ApiResponse.success(res, cached.data);
-      }
-
-      const result = await DashboardService.getStaffAttendance(schoolId, query.date, query.limit);
-      const etag = DashboardCache.set(cacheKey, result, 60);
-
-      res.setHeader('Cache-Control', 'private, max-age=60');
-      res.setHeader('ETag', etag);
-
-      return ApiResponse.success(res, result);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('DASH_KPI_ATTENDANCE')
+  @Get('/dashboard/kpis/attendance')
+  async getAttendanceKpi(@CurrentUser() user: CurrentUserPayload) {
+    return this.dashboardService.getAttendanceKpi(user.tenantId);
   }
 
-  /**
-   * 3. GET /api/dashboard/communication-balance (cache 5 min)
-   */
-  static async getCommunicationBalance(req: ExtendedRequest, res: Response, next: NextFunction) {
-    try {
-      const schoolId = DashboardController.resolveSchoolId(req);
-      const { today } = await DashboardService.getSchoolTimezoneAndToday(schoolId);
-
-      const cacheKey = DashboardCache.buildKey(schoolId, 'global', 'comm-balance', today);
-      const cached = DashboardCache.get(cacheKey);
-
-      if (cached) {
-        res.setHeader('Cache-Control', 'private, max-age=300');
-        res.setHeader('ETag', cached.etag);
-        if (req.headers['if-none-match'] === cached.etag) {
-          return res.status(304).end();
-        }
-        return ApiResponse.success(res, cached.data);
-      }
-
-      const result = await DashboardService.getCommunicationBalance(schoolId);
-      const etag = DashboardCache.set(cacheKey, result, 300);
-
-      res.setHeader('Cache-Control', 'private, max-age=300');
-      res.setHeader('ETag', etag);
-
-      return ApiResponse.success(res, result);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('DASH_QUICK_ACTIONS')
+  @Get('/dashboard/quick-actions')
+  async getQuickActions(@CurrentUser() user: CurrentUserPayload) {
+    return this.dashboardService.getQuickActions(user.tenantId, user.roleKey || 'SUPER_ADMIN');
   }
 
-  /**
-   * 4. GET /api/dashboard/pending-actions (cache 60s)
-   */
-  static async getPendingActions(req: ExtendedRequest, res: Response, next: NextFunction) {
-    try {
-      const schoolId = DashboardController.resolveSchoolId(req);
-      const sessionId = req.academicSessionId || null;
-      const { today } = await DashboardService.getSchoolTimezoneAndToday(schoolId);
-
-      const cacheKey = DashboardCache.buildKey(schoolId, sessionId || 'default', 'pending-actions', today);
-      const cached = DashboardCache.get(cacheKey);
-
-      if (cached) {
-        res.setHeader('Cache-Control', 'private, max-age=60');
-        res.setHeader('ETag', cached.etag);
-        if (req.headers['if-none-match'] === cached.etag) {
-          return res.status(304).end();
-        }
-        return ApiResponse.success(res, cached.data);
-      }
-
-      const result = await DashboardService.getPendingActions(schoolId, sessionId);
-      const etag = DashboardCache.set(cacheKey, result, 60);
-
-      res.setHeader('Cache-Control', 'private, max-age=60');
-      res.setHeader('ETag', etag);
-
-      return ApiResponse.success(res, result);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('DASH_FEE_TREND')
+  @Get('/dashboard/charts/fee-trend')
+  async getFeeTrend(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query() query: unknown,
+  ) {
+    const queryDto = validate<TrendQueryDto>(TrendQuerySchema, query);
+    return this.dashboardService.getFeeTrend(user.tenantId, queryDto);
   }
 
-  /**
-   * 5. GET /api/dashboard/fee-trend?days=7|30 (cache 5 min)
-   */
-  static async getFeeTrend(req: ExtendedRequest, res: Response, next: NextFunction) {
-    try {
-      const schoolId = DashboardController.resolveSchoolId(req);
+  @Endpoint('DASH_ATTENDANCE_TREND')
+  @Get('/dashboard/charts/attendance-trend')
+  async getAttendanceTrend(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query() query: unknown,
+  ) {
+    const queryDto = validate<TrendQueryDto>(TrendQuerySchema, query);
+    return this.dashboardService.getAttendanceTrend(user.tenantId, queryDto);
+  }
 
-      // Role check: Teacher cannot see fee data
-      if (req.user?.actorType === ActorType.TEACHER) {
-        throw new AppError(
-          'Teachers are not permitted to view fee data',
-          403,
-          null,
-          true,
-          'WIDGET_FORBIDDEN'
-        );
-      }
+  @Endpoint('DASH_PENDING_APPROVALS')
+  @Get('/dashboard/pending-approvals')
+  async getPendingApprovals(@CurrentUser() user: CurrentUserPayload) {
+    return this.dashboardService.getPendingApprovals(user.tenantId);
+  }
 
-      const query = feeTrendQuerySchema.parse(req.query);
-      const { today } = await DashboardService.getSchoolTimezoneAndToday(schoolId);
+  @Endpoint('APPROVALS_LIST')
+  @Get('/approvals')
+  async getApprovalsList(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query() query: unknown,
+  ) {
+    const queryDto = validate<ApprovalsListQueryDto>(ApprovalsListQuerySchema, query);
+    return this.dashboardService.getApprovalsList(user.tenantId, queryDto);
+  }
 
-      const cacheKey = DashboardCache.buildKey(schoolId, 'global', `fee-trend:${query.days}`, today);
-      const cached = DashboardCache.get(cacheKey);
+  @Endpoint('APPROVAL_DECIDE')
+  @Post('/approvals/:approvalId/decision')
+  @HttpCode(HttpStatus.OK)
+  async decideApproval(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('approvalId') approvalId: string,
+    @Body() body: unknown,
+  ) {
+    const dto = validate<ApprovalDecisionDto>(ApprovalDecisionSchema, body);
+    return this.dashboardService.decideApproval(user.tenantId, approvalId, user.userId, dto);
+  }
 
-      if (cached) {
-        res.setHeader('Cache-Control', 'private, max-age=300');
-        res.setHeader('ETag', cached.etag);
-        if (req.headers['if-none-match'] === cached.etag) {
-          return res.status(304).end();
-        }
-        return ApiResponse.success(res, cached.data);
-      }
+  @Endpoint('GLOBAL_SEARCH')
+  @Get('/search')
+  async globalSearch(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query() query: unknown,
+  ) {
+    const queryDto = validate<GlobalSearchQueryDto>(GlobalSearchQuerySchema, query);
+    return this.dashboardService.globalSearch(user.tenantId, queryDto);
+  }
 
-      const result = await DashboardService.getFeeTrend(schoolId, query.days);
-      const etag = DashboardCache.set(cacheKey, result, 300);
+  @Endpoint('NOTIFICATIONS_LIST')
+  @Get('/notifications')
+  async getNotifications(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query() query: unknown,
+  ) {
+    const queryDto = validate<NotificationsQueryDto>(NotificationsQuerySchema, query);
+    return this.dashboardService.getNotifications(user.tenantId, user.userId, queryDto);
+  }
 
-      res.setHeader('Cache-Control', 'private, max-age=300');
-      res.setHeader('ETag', etag);
+  @Endpoint('NOTIFICATION_READ')
+  @Patch('/notifications/:notificationId/read')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async markNotificationRead(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('notificationId') notificationId: string,
+  ) {
+    await this.dashboardService.markNotificationRead(user.tenantId, user.userId, notificationId);
+  }
 
-      return ApiResponse.success(res, result);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('NOTIFICATIONS_READ_ALL')
+  @Post('/notifications/read-all')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async markAllNotificationsRead(@CurrentUser() user: CurrentUserPayload) {
+    await this.dashboardService.markAllNotificationsRead(user.tenantId, user.userId);
   }
 }
+

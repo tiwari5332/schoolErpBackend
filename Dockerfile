@@ -1,23 +1,42 @@
-# Build stage
-FROM eclipse-temurin:17-jdk-alpine AS build
+# Stage 1: Build
+FROM node:22-alpine AS builder
+
 WORKDIR /app
 
-# Copy Maven wrapper and POM
-COPY .mvn/ .mvn
-COPY mvnw pom.xml ./
-RUN chmod +x mvnw
-RUN ./mvnw dependency:go-offline -B
+COPY package*.json ./
+COPY tsconfig.json ./
+COPY api-contract.json ./
 
-# Copy source code and build package
+RUN npm ci
+
+COPY prisma ./prisma
+RUN npx prisma generate
+
+COPY scripts ./scripts
+RUN npm run gen:contract
+
 COPY src ./src
-RUN ./mvnw package -DskipTests -B
+RUN npm run build
 
-# Run stage
-FROM eclipse-temurin:17-jre-alpine
+# Stage 2: Production Runner
+FROM node:22-alpine AS runner
+
 WORKDIR /app
 
-COPY --from=build /app/target/*.jar app.jar
+ENV NODE_ENV=production
+
+RUN addgroup -S nodejs -g 1001 && \
+    adduser -S nodejs -u 1001
+
+COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/src/contract/generated ./dist/contract/generated
+
+USER nodejs
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+CMD ["node", "dist/main.js"]

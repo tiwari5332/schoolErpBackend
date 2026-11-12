@@ -1,99 +1,173 @@
-import { Request, Response, NextFunction } from 'express';
-import { getTenantSchoolId } from '../../middleware/tenant.middleware';
-import CommunicationService from './communication.service';
-import { ApiResponse } from '../../utils/response';
-import { ExtendedRequest } from '../../middleware/logger.middleware';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import { CommunicationService } from './communication.service';
+import { Endpoint } from '../../contract/endpoint.decorator';
+import { CurrentUser, CurrentUserPayload } from '../../common/decorators/current-user.decorator';
+import {
+  NoticesQuerySchema,
+  NoticeCreateSchema,
+  NoticeRecipientCountSchema,
+  TemplateUpsertSchema,
+  ThreadCreateSchema,
+  MessageSendSchema,
+  NoticesQueryDto,
+  NoticeCreateDto,
+  NoticeRecipientCountDto,
+  TemplateUpsertDto,
+  ThreadCreateDto,
+  MessageSendDto,
+} from './dto/communication.dto';
+import { DomainError } from '../../common/domain.error';
 
-class CommunicationController {
-  static async getBroadCastList(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const channel = req.query.channel as string | undefined;
-      const status = req.query.status as string | undefined;
+function validate<T>(schema: any, data: unknown): T {
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    const details = result.error.errors.map((e: any) => ({
+      field: e.path.join('.'),
+      message: e.message,
+    }));
+    throw new DomainError('VALIDATION_ERROR', 'Validation failed', details);
+  }
+  return result.data as T;
+}
 
-      const broadCastList = await CommunicationService.getBroadCastList(schoolId, channel, status);
-      return ApiResponse.success(res, broadCastList);
-    } catch (error: any) {
-      next(error);
-    }
+@Controller()
+export class CommunicationController {
+  constructor(private readonly communicationService: CommunicationService) {}
+
+  @Endpoint('NOTICES_LIST')
+  @Get('/communication/notices')
+  async getNotices(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query() query: unknown,
+  ) {
+    const queryDto = validate<NoticesQueryDto>(NoticesQuerySchema, query);
+    return this.communicationService.getNotices(user.tenantId, queryDto);
   }
 
-  static async sendBroadcast(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const user = (req as ExtendedRequest).user;
-      const senderTeacherId = user?.actorType === 'TEACHER' ? user.actorId : (req.body.senderTeacherId || null);
-      const actorType = user?.actorType || 'ADMIN';
-
-      const result = await CommunicationService.sendBroadcast({
-        schoolId,
-        senderTeacherId,
-        actorType,
-        channel: req.body.channel,
-        messageBody: req.body.messageBody,
-        templateCode: req.body.templateCode,
-        templateVariables: req.body.templateVariables,
-        sectionIds: req.body.sectionIds,
-        directRecipients: req.body.directRecipients,
-      });
-
-      return ApiResponse.success(res, result, 201);
-    } catch (error: any) {
-      next(error);
-    }
+  @Endpoint('NOTICE_CREATE')
+  @Post('/communication/notices')
+  @HttpCode(HttpStatus.CREATED)
+  async createNotice(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() body: unknown,
+  ) {
+    const dto = validate<NoticeCreateDto>(NoticeCreateSchema, body);
+    return this.communicationService.createNotice(user.tenantId, user.userId, dto);
   }
 
-  static async getTemplates(req: Request, res: Response, next: NextFunction) {
-    try {
-      const channel = req.query.channel as string | undefined;
-      const templates = await CommunicationService.getTemplates(channel);
-      return ApiResponse.success(res, templates);
-    } catch (error: any) {
-      next(error);
-    }
+  @Endpoint('NOTICE_GET')
+  @Get('/communication/notices/:noticeId')
+  async getNoticeById(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('noticeId') noticeId: string,
+  ) {
+    return this.communicationService.getNoticeById(user.tenantId, noticeId);
   }
 
-  static async createTemplate(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { name, code, template, channel } = req.body;
-      const result = await CommunicationService.createTemplate(name, code, template, channel);
-      return ApiResponse.success(res, result, 201);
-    } catch (error: any) {
-      next(error);
-    }
+  @Endpoint('NOTICE_DELETE')
+  @Delete('/communication/notices/:noticeId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteNotice(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('noticeId') noticeId: string,
+  ) {
+    await this.communicationService.deleteNotice(user.tenantId, noticeId);
   }
 
-  static async assignTeacherQuota(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const { teacherId, channel, quotaLimit, yearMonth } = req.body;
-      const ym = yearMonth || new Date().toISOString().slice(0, 7);
-
-      const result = await CommunicationService.assignTeacherQuota(
-        schoolId,
-        teacherId,
-        channel,
-        quotaLimit,
-        ym
-      );
-      return ApiResponse.success(res, result, 201);
-    } catch (error: any) {
-      next(error);
-    }
+  @Endpoint('NOTICE_RECIPIENT_COUNT')
+  @Post('/communication/notices/recipient-count')
+  @HttpCode(HttpStatus.OK)
+  async calculateRecipientCount(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() body: unknown,
+  ) {
+    const dto = validate<NoticeRecipientCountDto>(NoticeRecipientCountSchema, body);
+    return this.communicationService.calculateRecipientCount(user.tenantId, dto);
   }
 
-  static async getTeacherQuotas(req: Request, res: Response, next: NextFunction) {
-    try {
-      const schoolId = getTenantSchoolId(req)!;
-      const teacherId = req.params.teacherId;
-      const yearMonth = req.query.yearMonth as string | undefined;
+  @Endpoint('TEMPLATES_LIST')
+  @Get('/communication/templates')
+  async getTemplates(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('channel') channel?: string,
+  ) {
+    return this.communicationService.getTemplates(user.tenantId, channel);
+  }
 
-      const result = await CommunicationService.getTeacherQuotas(schoolId, teacherId, yearMonth);
-      return ApiResponse.success(res, result);
-    } catch (error: any) {
-      next(error);
-    }
+  @Endpoint('TEMPLATE_UPSERT')
+  @Put('/communication/templates/:templateId')
+  async upsertTemplate(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('templateId') templateId: string,
+    @Body() body: unknown,
+  ) {
+    const dto = validate<TemplateUpsertDto>(TemplateUpsertSchema, body);
+    return this.communicationService.upsertTemplate(user.tenantId, templateId, dto);
+  }
+
+  @Endpoint('THREADS_LIST')
+  @Get('/communication/threads')
+  async getThreads(@CurrentUser() user: CurrentUserPayload) {
+    return this.communicationService.getThreads(user.tenantId, user.userId);
+  }
+
+  @Endpoint('THREAD_CREATE')
+  @Post('/communication/threads')
+  @HttpCode(HttpStatus.CREATED)
+  async createThread(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() body: unknown,
+  ) {
+    const dto = validate<ThreadCreateDto>(ThreadCreateSchema, body);
+    return this.communicationService.createThread(user.tenantId, user.userId, dto);
+  }
+
+  @Endpoint('THREAD_MESSAGES')
+  @Get('/communication/threads/:threadId/messages')
+  async getThreadMessages(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('threadId') threadId: string,
+  ) {
+    return this.communicationService.getThreadMessages(user.tenantId, threadId);
+  }
+
+  @Endpoint('THREAD_SEND')
+  @Post('/communication/threads/:threadId/messages')
+  @HttpCode(HttpStatus.CREATED)
+  async sendMessage(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('threadId') threadId: string,
+    @Body() body: unknown,
+  ) {
+    const dto = validate<MessageSendDto>(MessageSendSchema, body);
+    return this.communicationService.sendMessage(user.tenantId, threadId, user.userId, dto);
+  }
+
+  @Endpoint('THREAD_READ')
+  @Post('/communication/threads/:threadId/read')
+  @HttpCode(HttpStatus.OK)
+  async markThreadRead(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('threadId') threadId: string,
+  ) {
+    return this.communicationService.markThreadRead(user.tenantId, threadId, user.userId);
+  }
+
+  @Endpoint('PORTAL_NOTICES')
+  @Get('/portal/notices')
+  async getPortalNotices(@CurrentUser() user: CurrentUserPayload) {
+    return this.communicationService.getPortalNotices(user.tenantId);
   }
 }
 
-export default CommunicationController;

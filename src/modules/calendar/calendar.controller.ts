@@ -1,74 +1,96 @@
-import { Response, NextFunction } from 'express';
-import { ExtendedRequest } from '../../middleware/logger.middleware';
-import { CalendarService } from './calendar.service';
 import {
-  calendarEventsQuerySchema,
-  upcomingEventsQuerySchema,
-  calendarEventCreateSchema,
-} from '../dashboard/dashboard.dto';
-import { ApiResponse, BusinessRuleException } from '../../utils/response';
-import { ActorType } from '../../config/constants';
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import { CalendarService } from './calendar.service';
+import { Endpoint } from '../../contract/endpoint.decorator';
+import { CurrentUser, CurrentUserPayload } from '../../common/decorators/current-user.decorator';
+import {
+  CalendarEventsQuerySchema,
+  CalendarUpcomingQuerySchema,
+  CalendarEventCreateSchema,
+  CalendarEventUpdateSchema,
+  CalendarEventsQueryDto,
+  CalendarUpcomingQueryDto,
+  CalendarEventCreateDto,
+  CalendarEventUpdateDto,
+} from './dto/calendar.dto';
+import { DomainError } from '../../common/domain.error';
 
+function validate<T>(schema: any, data: unknown): T {
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    const details = result.error.errors.map((e: any) => ({
+      field: e.path.join('.'),
+      message: e.message,
+    }));
+    throw new DomainError('VALIDATION_ERROR', 'Validation failed', details);
+  }
+  return result.data as T;
+}
+
+@Controller()
 export class CalendarController {
-  private static resolveSchoolId(req: ExtendedRequest): string {
-    const headerSchoolId = req.headers['x-school-id'] as string;
-    const userSchoolId = req.user?.schoolId;
-    const schoolId = (req.user?.actorType === ActorType.SUPER_ADMIN && headerSchoolId) ? headerSchoolId : userSchoolId;
+  constructor(private readonly calendarService: CalendarService) {}
 
-    if (!schoolId) {
-      throw new BusinessRuleException(
-        'School context is required. Please provide a valid tenant token or X-School-Id header.',
-        400,
-        null,
-        'VALIDATION_ERROR'
-      );
-    }
-    return schoolId;
+  @Endpoint('CALENDAR_EVENTS')
+  @Get('/calendar/events')
+  async getEvents(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query() query: unknown,
+  ) {
+    const queryDto = validate<CalendarEventsQueryDto>(CalendarEventsQuerySchema, query);
+    return this.calendarService.getEvents(user.tenantId, queryDto);
   }
 
-  /**
-   * 6. GET /api/calendar/events?from=YYYY-MM-DD&to=YYYY-MM-DD
-   */
-  static async getEvents(req: ExtendedRequest, res: Response, next: NextFunction) {
-    try {
-      const schoolId = CalendarController.resolveSchoolId(req);
-      const query = calendarEventsQuerySchema.parse(req.query);
-
-      const events = await CalendarService.getEvents(schoolId, query.from, query.to);
-      return ApiResponse.success(res, events);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('CALENDAR_UPCOMING')
+  @Get('/calendar/upcoming')
+  async getUpcoming(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query() query: unknown,
+  ) {
+    const queryDto = validate<CalendarUpcomingQueryDto>(CalendarUpcomingQuerySchema, query);
+    return this.calendarService.getUpcoming(user.tenantId, queryDto);
   }
 
-  /**
-   * 7. GET /api/events/upcoming?days=30&limit=5
-   */
-  static async getUpcomingEvents(req: ExtendedRequest, res: Response, next: NextFunction) {
-    try {
-      const schoolId = CalendarController.resolveSchoolId(req);
-      const query = upcomingEventsQuerySchema.parse(req.query);
-
-      const events = await CalendarService.getUpcomingEvents(schoolId, query.days, query.limit);
-      return ApiResponse.success(res, events);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('CALENDAR_EVENT_CREATE')
+  @Post('/calendar/events')
+  @HttpCode(HttpStatus.CREATED)
+  async createEvent(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() body: unknown,
+  ) {
+    const dto = validate<CalendarEventCreateDto>(CalendarEventCreateSchema, body);
+    return this.calendarService.createEvent(user.tenantId, dto);
   }
 
-  /**
-   * 8. POST /api/calendar/events
-   */
-  static async createEvent(req: ExtendedRequest, res: Response, next: NextFunction) {
-    try {
-      const schoolId = CalendarController.resolveSchoolId(req);
-      const data = calendarEventCreateSchema.parse(req.body);
+  @Endpoint('CALENDAR_EVENT_UPDATE')
+  @Put('/calendar/events/:eventId')
+  async updateEvent(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('eventId') eventId: string,
+    @Body() body: unknown,
+  ) {
+    const dto = validate<CalendarEventUpdateDto>(CalendarEventUpdateSchema, body);
+    return this.calendarService.updateEvent(user.tenantId, eventId, dto);
+  }
 
-      const event = await CalendarService.createEvent(schoolId, data, req.user?.actorId);
-      return ApiResponse.success(res, event, 201);
-    } catch (err) {
-      next(err);
-    }
+  @Endpoint('CALENDAR_EVENT_DELETE')
+  @Delete('/calendar/events/:eventId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteEvent(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('eventId') eventId: string,
+  ) {
+    await this.calendarService.deleteEvent(user.tenantId, eventId);
   }
 }
 
