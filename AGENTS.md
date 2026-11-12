@@ -21,6 +21,7 @@
   - `src/server.ts` & `src/index.ts` / `api/index.ts` -> Express-wrapped Fastify serverless entrypoint for Vercel deployment with `vercel.json` rewrite
   - `npm run start:worker` -> `node dist/worker.js` (BullMQ workers & schedulers)
   - `npm run build` -> `prisma generate && tsc` (Generates Prisma Client then compiles TypeScript to `./dist`)
+  - `npm run db:seed` -> Seeds Neon PostgreSQL with SaaS Plans, Global System Roles, Platform Owner, Demo Tenant (Apex Global Academy), School Admin, Growth Subscription, and Academic Session 2026-27.
   - `npm test` -> Vitest unit & contract test suite
 - **Project Structure**:
   - `src/contract/` -> Generated contract artefacts (`routes.ts`, `enums.ts`, `fixtures.ts`, `openapi.json`, `schemas.ts`), `@Endpoint()` decorator, `ContractCoverageChecker`

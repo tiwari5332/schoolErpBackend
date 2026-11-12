@@ -25,6 +25,7 @@ always_on: true
   - `src/main.ts`: Fastify HTTP API server listening on `/api/v1` with Helmet, CORS, Rate Limit, and Swagger UI at `/docs`.
   - `src/server.ts`, `src/index.ts`, `api/index.ts`: Express wrapper over cached Fastify application instance and request handler for Vercel Serverless deployments, satisfying Vercel's Express framework analyzer and routed via `vercel.json`.
   - `src/worker.ts`: BullMQ background worker process for imports, exports, notifications, reminders, outbox relay.
+  - `prisma/seed.ts` (`npm run db:seed`): Seeds SaaS Plans, System Roles, Platform Owner, Demo Tenant (`Apex Global Academy`), Admin user, Growth Subscription, and Academic Session `2026-27`.
   - Build script: `prisma generate && tsc` (`postinstall: prisma generate` ensures Prisma client types exist before compilation on CI/CD platforms like Vercel).
 - **Project Structure**:
   - `src/contract/`: Decorators (`@Endpoint()`), coverage checking (`ContractCoverageChecker`), generated routes/enums/fixtures.
