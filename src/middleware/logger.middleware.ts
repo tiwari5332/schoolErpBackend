@@ -8,6 +8,8 @@ import { SecurityPrincipal } from '../utils/jwt';
 export interface ExtendedRequest extends Request {
   requestId?: string;
   sessionId?: string;
+  academicSessionId?: string | null;
+  academicSession?: any;
   user?: SecurityPrincipal;
   file?: any;
 }

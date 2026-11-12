@@ -18,11 +18,11 @@ export const globalErrorHandler = (err: any, req: Request, res: Response, next: 
   Logger.error(`Error processing ${req.method} ${req.originalUrl}: ${err.message}`, err, context);
 
   if (err instanceof AppError) {
-    return ApiResponse.error(res, err.message, err.statusCode, err.details);
+    return ApiResponse.error(res, err.message, err.statusCode, err.details, err.code);
   }
 
   if (err instanceof ZodError) {
-    return ApiResponse.error(res, 'Validation Error', 400, err.errors);
+    return ApiResponse.error(res, 'Validation Error', 400, err.errors, 'VALIDATION_ERROR');
   }
 
   const statusCode = err.statusCode || err.status || 500;

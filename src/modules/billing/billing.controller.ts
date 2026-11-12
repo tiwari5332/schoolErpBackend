@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { ExtendedRequest } from '../../middleware/logger.middleware';
 import { getTenantSchoolId } from '../../middleware/tenant.middleware';
 import { BillingService } from './billing.service';
 import { ApiResponse } from '../../utils/response';
@@ -52,7 +53,7 @@ export class BillingController {
     }
   }
 
-  static async overrideCap(req: Request, res: Response, next: NextFunction) {
+  static async overrideCap(req: ExtendedRequest, res: Response, next: NextFunction) {
     try {
       const superAdminId = req.user!.actorId;
       const schoolId = req.params.schoolId;

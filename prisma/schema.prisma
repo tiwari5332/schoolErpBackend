@@ -35,6 +35,11 @@ model School {
   teachers         Teacher[]
   topUpPacks       TopUpPack[]
   usageLedgers     UsageLedger[]
+  studentAttendances StudentAttendance[]
+  staffAttendances   StaffAttendance[]
+  attendanceLedgers  MonthlyAttendanceLedger[]
+  academicSessions   AcademicSession[]
+  sessionAuditLogs   AcademicSessionAuditLog[]
 
   @@map("schools")
 }
@@ -172,6 +177,8 @@ model Teacher {
   classSections      Section[]               @relation("ClassTeacher")
   broadcastQuotas    TeacherBroadcastQuota[]
   departmentMaps     TeacherDepartmentMap[]
+  recordedStudentAttendances StudentAttendance[] @relation("TeacherRecordedStudentAttendance")
+  staffAttendances   StaffAttendance[]       @relation("TeacherStaffAttendance")
   school             School                  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([schoolId, employeeCode])
@@ -315,6 +322,7 @@ model AcademicYear {
   createdAt DateTime  @default(now()) @map("created_at")
   school    School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   sections  Section[]
+  studentAttendances StudentAttendance[]
 
   @@map("academic_years")
 }
@@ -345,6 +353,8 @@ model Section {
   sectionFeeStructures SectionFeeStructure[]
   subjectMaps          SectionSubjectMap[]
   subjectTeachers      SectionSubjectTeacher[]
+  studentAttendances   StudentAttendance[]
+  attendanceLedgers    MonthlyAttendanceLedger[]
   academicYear         AcademicYear            @relation(fields: [academicYearId], references: [id])
   classTeacher         Teacher?                @relation("ClassTeacher", fields: [classTeacherId], references: [id])
   grade                Grade                   @relation(fields: [gradeId], references: [id])
@@ -375,6 +385,7 @@ model Subject {
   subjectTypeId   String                  @map("subject_type_id") @db.Uuid
   sectionMaps     SectionSubjectMap[]
   subjectTeachers SectionSubjectTeacher[]
+  studentAttendances StudentAttendance[]
   school          School                  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   subjectType     SubjectType             @relation(fields: [subjectTypeId], references: [id])
 
@@ -437,6 +448,8 @@ model Student {
   invoices        FeeInvoice[]
   guardians       Guardian[]
   payments        Payment[]
+  studentAttendances StudentAttendance[]
+  attendanceLedgers  MonthlyAttendanceLedger[]
   school          School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([schoolId, studentCode])
@@ -633,4 +646,125 @@ model employeeEmployment {
   status            String?
 
   @@map("employee_employment")
+}
+
+model StudentAttendance {
+  id                  String       @id @default(uuid()) @db.Uuid
+  schoolId            String       @map("school_id") @db.Uuid
+  studentId           String       @map("student_id") @db.Uuid
+  sectionId           String       @map("section_id") @db.Uuid
+  academicYearId      String       @map("academic_year_id") @db.Uuid
+  date                DateTime     @db.Date
+  attendanceType      String       @default("DAILY_HOMEROOM") @map("attendance_type") @db.VarChar(50)
+  subjectId           String?      @map("subject_id") @db.Uuid
+  status              String       @default("PRESENT") @db.VarChar(20)
+  remarks             String?
+  recordedByTeacherId String?      @map("recorded_by_teacher_id") @db.Uuid
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+
+  school              School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student             Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  section             Section      @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  academicYear        AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  subject             Subject?     @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  recordedByTeacher   Teacher?     @relation("TeacherRecordedStudentAttendance", fields: [recordedByTeacherId], references: [id], onDelete: SetNull)
+
+  @@map("student_attendance")
+}
+
+model StaffAttendance {
+  id           String    @id @default(uuid()) @db.Uuid
+  schoolId     String    @map("school_id") @db.Uuid
+  teacherId    String    @map("teacher_id") @db.Uuid
+  date         DateTime  @db.Date
+  checkInTime  DateTime? @map("check_in_time")
+  checkOutTime DateTime? @map("check_out_time")
+  status       String    @default("PRESENT") @db.VarChar(20)
+  source       String    @default("MANUAL") @db.VarChar(50)
+  remarks      String?
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  school       School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher      Teacher   @relation("TeacherStaffAttendance", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, teacherId, date])
+  @@map("staff_attendance")
+}
+
+model MonthlyAttendanceLedger {
+  id               String   @id @default(uuid()) @db.Uuid
+  schoolId         String   @map("school_id") @db.Uuid
+  studentId        String   @map("student_id") @db.Uuid
+  sectionId        String   @map("section_id") @db.Uuid
+  yearMonth        String   @map("year_month") @db.VarChar(7)
+  totalWorkingDays Int      @default(0) @map("total_working_days")
+  presentDays      Int      @default(0) @map("present_days")
+  absentDays       Int      @default(0) @map("absent_days")
+  lateDays         Int      @default(0) @map("late_days")
+  halfDays         Int      @default(0) @map("half_days")
+  excusedDays      Int      @default(0) @map("excused_days")
+  percentage       Decimal  @default(0.00) @map("percentage") @db.Decimal(5, 2)
+  examEligible     Boolean  @default(true) @map("exam_eligible")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  school           School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student          Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  section          Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, yearMonth])
+  @@map("monthly_attendance_ledgers")
+}
+
+model AcademicSession {
+  id              String                    @id @default(uuid()) @db.Uuid
+  schoolId        String                    @map("school_id") @db.Uuid
+  name            String                    @db.VarChar(100)
+  startDate       DateTime                  @map("start_date") @db.Date
+  endDate         DateTime                  @map("end_date") @db.Date
+  status          String                    @default("upcoming") @db.VarChar(20)
+  isCurrent       Boolean                   @default(false) @map("is_current")
+  createdBy       String?                   @map("created_by") @db.Uuid
+  createdAt       DateTime                  @default(now()) @map("created_at")
+  updatedAt       DateTime                  @default(now()) @updatedAt @map("updated_at")
+
+  school          School                    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  auditLogs       AcademicSessionAuditLog[]
+  userPreferences UserPreference[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId, status])
+  @@index([schoolId, startDate])
+  @@map("academic_sessions")
+}
+
+model UserPreference {
+  id                String           @id @default(uuid()) @db.Uuid
+  actorType         String           @map("actor_type") @db.VarChar(50)
+  actorId           String           @map("actor_id") @db.Uuid
+  selectedSessionId String?          @map("selected_session_id") @db.Uuid
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @default(now()) @updatedAt @map("updated_at")
+
+  selectedSession   AcademicSession? @relation(fields: [selectedSessionId], references: [id], onDelete: SetNull)
+
+  @@unique([actorType, actorId])
+  @@map("user_preferences")
+}
+
+model AcademicSessionAuditLog {
+  id          String          @id @default(uuid()) @db.Uuid
+  schoolId    String          @map("school_id") @db.Uuid
+  sessionId   String          @map("session_id") @db.Uuid
+  action      String          @db.VarChar(50)
+  performedBy String?         @map("performed_by") @db.Uuid
+  details     Json?
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  school      School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  session     AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("academic_session_audit_logs")
 }

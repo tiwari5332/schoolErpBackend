@@ -20,6 +20,7 @@ router.post('/setup/bulk-discount-policies', hasPermission(PermissionCode.FEE_ST
 // Payments, Waivers & Refunds
 router.post('/payments/gateway', hasPermission(PermissionCode.FEE_PAYMENT_RECORD), FeeController.recordGatewayPayment);
 router.post('/payments/manual-cash', hasPermission(PermissionCode.FEE_PAYMENT_RECORD), FeeController.recordManualCashPayment);
+router.post('/payments/bulk', hasPermission(PermissionCode.FEE_PAYMENT_RECORD), FeeController.recordBulkPayment);
 router.post('/invoices/:invoiceId/waiver', hasPermission(PermissionCode.FEE_WAIVER_APPLY), FeeController.applyWaiver);
 router.post('/payments/:paymentId/refund', hasPermission(PermissionCode.FEE_REFUND_PROCESS), FeeController.processRefund);
 

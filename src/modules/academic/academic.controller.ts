@@ -99,7 +99,14 @@ export class AcademicController {
   static async createGrade(req: Request, res: Response, next: NextFunction) {
     try {
       const schoolId = getTenantSchoolId(req)!;
-      const grade = await AcademicService.createGrade(schoolId, req.body.name, req.body.sequenceOrder);
+      const { name, sequenceOrder, sections, academicYearId } = req.body;
+      const grade = await AcademicService.createGrade(
+        schoolId,
+        name,
+        sequenceOrder,
+        sections,
+        academicYearId
+      );
       return ApiResponse.success(res, grade, 201);
     } catch (err) {
       next(err);
@@ -314,6 +321,29 @@ export class AcademicController {
       const fromAcademicYearId = (req.query.fromAcademicYearId as string) || req.body.fromAcademicYearId;
       const toAcademicYearId = (req.query.toAcademicYearId as string) || req.body.toAcademicYearId;
       const result = await AcademicService.rolloverAcademicYear(schoolId, fromAcademicYearId, toAcademicYearId);
+      return ApiResponse.success(res, result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // Student Progression & Historical Placement (HLD Section 7.2 - 7.4)
+  static async batchPromote(req: Request, res: Response, next: NextFunction) {
+    try {
+      const schoolId = getTenantSchoolId(req)!;
+      const { academicYearId, promotions } = req.body;
+      const result = await AcademicService.batchPromoteStudents(schoolId, academicYearId, promotions);
+      return ApiResponse.success(res, result, 201);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async getEnrollmentHistory(req: Request, res: Response, next: NextFunction) {
+    try {
+      const schoolId = getTenantSchoolId(req)!;
+      const studentId = req.params.studentId;
+      const result = await AcademicService.getStudentEnrollmentHistory(schoolId, studentId);
       return ApiResponse.success(res, result);
     } catch (err) {
       next(err);

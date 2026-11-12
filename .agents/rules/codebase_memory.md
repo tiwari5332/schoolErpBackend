@@ -22,13 +22,20 @@ always_on: true
 - **Stack**: Node.js 18+, Express.js v4.19, TypeScript v5.5, PostgreSQL (`pg` raw queries), JWT (HS256), bcryptjs, Multer, node-cron, Zod.
 - **Project Structure**: Feature-wise modules under `src/modules/`:
   - `academic` -> `academic.controller.ts`, `academic.service.ts`, `academic.route.ts`
+  - `session` -> `session.controller.ts`, `session.service.ts`, `session.route.ts`, `session.dto.ts`
+  - `me` -> `me.controller.ts`, `me.route.ts`
+  - `dashboard` -> `dashboard.controller.ts`, `dashboard.service.ts`, `dashboard.route.ts`, `dashboard.dto.ts`
+  - `calendar` -> `calendar.controller.ts`, `calendar.service.ts`, `calendar.route.ts`
   - `auth` -> `auth.controller.ts`, `auth.service.ts`, `auth.route.ts`
   - `billing` -> `billing.controller.ts`, `billing.service.ts`, `billing.route.ts`
   - `fee` -> `fee.controller.ts`, `fee.service.ts`, `fee.route.ts`
   - `onboarding` -> `onboarding.controller.ts`, `onboarding.service.ts`, `onboarding.route.ts`
   - `role` -> `role.controller.ts`, `role.service.ts`, `role.route.ts`
-  - `teacher` -> `teacher.controller.ts`, `teacher.service.ts`, `teacher.route.ts`
-  - `notification` -> `notification.service.ts`
+  - `teacher` -> `teacher.controller.ts`, `teacher.service.ts`, `teacher.route.ts`, `teacher.dto.ts`
+  - `student` -> `student.controller.ts`, `student.service.ts`, `student.route.ts`, `student.dto.ts`
+  - `communication` -> `communication.controller.ts`, `communication.service.ts`, `communication.routes.ts`
+  - `notification` -> `notification.service.ts`, `notification.controller.ts`, `notification.route.ts`
+  - `attendance` -> `attendance.controller.ts`, `attendance.service.ts`, `attendance.route.ts`
 - **Tenancy**: Multi-tenant database isolation via tenant helper functions and middleware (`getTenantSchoolId`, `tenantInterceptor`).
 - **Security**: 
   0. `requestResponseLogger` (Order 0) tracks request/response logs.
@@ -83,17 +90,28 @@ always_on: true
    - `Refund`: (`payment`, `amount`, `mode`, `reason`).
 
 6. **Communication (`communication`)**:
-   - `Broadcast`: (`school`, `senderTeacherId`, `channel`, `messageBody`, `recipientCount`).
-   - `MessageTemplate`: Reusable templates.
+   - `Broadcast`: (`school`, `senderTeacherId`, `channel: SMS|WHATSAPP|EMAIL|IN_APP`, `messageBody`, `recipientCount`, `sentAt`, `status`).
+   - `MessageTemplate`: Pre-approved reusable templates (`name`, `code`, `template`, `channel`).
+   - `TeacherBroadcastQuota`: Quota limits and tracking per teacher, channel, and month.
+
+7. **Attendance (`attendance`)**:
+   - `StudentAttendance`: (`school`, `student`, `section`, `academicYear`, `date`, `attendanceType: DAILY_HOMEROOM|SUBJECT_WISE`, `subject`, `status: PRESENT|ABSENT|LATE|HALF_DAY|EXCUSED`, `recordedByTeacher`).
+   - `StaffAttendance`: Biometric/RFID/manual check-in & check-out (`school`, `teacher`, `date`, `checkInTime`, `checkOutTime`, `status`, `source`).
+   - `MonthlyAttendanceLedger`: Monthly roll-up & exam eligibility (`school`, `student`, `section`, `yearMonth`, `totalWorkingDays`, `presentDays`, `absentDays`, `percentage`, `examEligible`).
 
 ---
 
 ## API Map
 - **Public & Auth**: `POST /api/auth/register`, `/admin/login`, `/teacher/login`, `/parent/login`, `/signup`, `/create-password`, `/forgot-password`, `/reset-password`, `/change-password`, `/otp/send`, `/otp/resend`, `/otp/verify`, `GET /api/auth/parent/schools`.
 - **Public RBAC Metadata**: `GET /api/public/schools/{schoolId}/roles/{roleId}/permissions`, `/roles/by-name/{roleName}/permissions`.
-- **Academic**: `GET/POST/PUT /api/academic/academic-years` (+ `/years`, `/active`, `/{id}/activate`, `/{id}/close`), `GET/POST/PUT /api/academic/grades` (and `/classes`), `/departments` (optional `?academicYearId=`), `POST /departments/assign-faculty`, `/sections` (optional `?academicYearId=`), `GET /sections/{id}/subjects`, `/subjects`, `/subjects/map-to-section` (accepts `subjectIds` list for single & multiple), `/subjects/assign-teacher`, `/subject-types`, `PATCH /sections/{id}/class-teacher`, `POST /api/academic/rollover`.
+- **Academic**: `GET/POST/PUT /api/academic/academic-years` (+ `/years`, `/active`, `/{id}/activate`, `/{id}/close`), `GET/POST/PUT /api/academic/grades` (and `/classes`), `/departments` (optional `?academicYearId=`), `POST /departments/assign-faculty`, `/sections` (optional `?academicYearId=`), `GET /sections/{id}/subjects`, `/subjects`, `/subjects/map-to-section` (accepts `subjectIds` list for single & multiple), `/subjects/assign-teacher`, `/subject-types`, `PATCH /sections/{id}/class-teacher`, `POST /api/academic/rollover`, `POST /api/academic/progression/batch-promote`, `GET /api/academic/students/{studentId}/enrollment-history`.
+- **Attendance**: `POST /api/attendance/daily` (homeroom morning attendance + auto parent absence SMS/WhatsApp alert), `POST /api/attendance/subject` (subject/period-wise attendance), `GET /api/attendance/sections/{sectionId}` (section attendance query), `GET /api/attendance/students/{studentId}/summary` (student monthly attendance report & exam eligibility), `POST /api/attendance/staff/check-in`, `POST /api/attendance/staff/check-out`, `GET /api/attendance/staff`.
+- **Communication & Broadcast**: `POST /api/broadcast/send` (multi-channel broadcast dispatch with teacher quota check + multi-tier plan/top-up ledger deduction), `GET /api/broadcast/list`, `GET/POST /api/broadcast/templates`, `POST /api/broadcast/quotas/assign`, `GET /api/broadcast/quotas/teacher/{teacherId}`.
 - **Onboarding**: `POST /api/onboarding/students` (+ `/bulk`), `POST /api/onboarding/teachers` (+ `/bulk`).
-- **Teachers**: `GET /api/teachers` (all teachers of school; optional `?sectionId=`), `GET /api/teachers/section/{sectionId}` (teachers of particular section: homeroom + subjects).
+- **Teachers**: `GET /api/teachers` (all teachers; optional `?sectionId=`), `GET /api/teachers/{id}` (profile with active department), `GET /api/teachers/section/{sectionId}`, `PUT /api/teachers/{id}` (full staff update with unique phone guard), `PATCH /api/teachers/{id}` (partial staff update).
+- **Students**: `GET /api/students` (directory with search, section filter, pagination), `GET /api/students/{id}` (single student details with active enrollment & primary guardian), `PUT /api/students/{id}` (full student update: personal details, section/rollNo reassignment, parent account sync), `PATCH /api/students/{id}` (partial student update).
+- **Academic Sessions & Me**: `GET/POST/PUT /api/academic-sessions`, `PATCH /api/academic-sessions/{id}/set-current`, `GET /api/me`, `PUT /api/me/preferences`, `GET /api/me/quick-actions`.
+- **Dashboard & Analytics**: `GET /api/dashboard/summary`, `/dashboard/staff-attendance`, `/dashboard/communication-balance`, `/dashboard/pending-actions`, `/dashboard/fee-trend`, `GET /api/calendar/events`, `POST /api/calendar/events`, `GET /api/events/upcoming`, `GET /api/notifications/unread-count`.
 - **Fee Management**: `GET /api/fee-invoices/search`, `GET/POST /api/fee/setup/components`, `/sections/{id}/structure`, `/late-fee-slabs`, `/bulk-discount-policies`, `POST /api/fee/payments/gateway`, `/manual-cash`, `/bulk`, `POST /api/fee/invoices/{id}/waiver`, `POST /api/fee/payments/{id}/refund`.
 - **Billing**: `GET/POST/PUT /api/billing/plans`, `POST /api/billing/schools`, `/schools/{id}/subscription/override-cap`, `GET/POST /api/billing/subscription` (+ `/upgrade`), `GET/POST /api/billing/topups` (+ `/usage`).
 - **Roles**: `GET/POST /api/roles`, `POST /api/roles/assign`.
@@ -102,5 +120,6 @@ always_on: true
 ---
 
 ## Guidelines
+- **Postman Collection**: `School_ERP.postman_collection.json` contains the full 104-request collection across 11 modules.
 - **Diagram Generation Rule**: Do NOT regenerate or modify diagram files (`school-erp-lld.svg`, `school-erp-lld-diagram.html`, `generate_diagram_svg.py`, etc.) automatically. Only modify or regenerate diagrams when explicitly requested by the user.
 - **CURL Request Rule**: When asked for cURL commands, output ONLY the cURL commands without any sample responses, explanations, or extra commentary. Always use base URL `https://miraculous-education-production-bee2.up.railway.app` and header `Authorization: Bearer {{authToken}}`.

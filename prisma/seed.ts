@@ -1,4 +1,4 @@
-import { AuthService } from '../src/services/auth.service';
+import { AuthService } from '../src/modules/auth/auth.service';
 import db, { pool } from '../src/config/database';
 import { PermissionCode } from '../src/config/constants';
 

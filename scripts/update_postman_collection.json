@@ -1,0 +1,518 @@
+import fs from 'fs';
+import path from 'path';
+
+const collectionPath = path.join(__dirname, '..', 'School_ERP.postman_collection.json');
+const collection = JSON.parse(fs.readFileSync(collectionPath, 'utf8'));
+
+// 1. Ensure collection variables
+const varKeys = new Set(collection.variable.map((v: any) => v.key));
+if (!varKeys.has('sessionId')) {
+  collection.variable.push({
+    key: 'sessionId',
+    value: '',
+    type: 'string',
+  });
+}
+if (!varKeys.has('superAdminToken')) {
+  collection.variable.push({
+    key: 'superAdminToken',
+    value: '',
+    type: 'string',
+  });
+}
+
+// 2. Folder: 9. Academic Sessions & Preferences
+const sessionFolder = {
+  name: '9. Academic Sessions & Preferences',
+  description: 'Endpoints for Academic Sessions management (Super Admin lifecycle, session cloning, atomic set-current, dropdown list with ETag caching, user session preferences, and permitted quick-actions).',
+  item: [
+    {
+      name: 'Get Academic Sessions List (Dropdown)',
+      request: {
+        method: 'GET',
+        header: [
+          {
+            key: 'Authorization',
+            value: 'Bearer {{authToken}}',
+          },
+          {
+            key: 'X-Session-Id',
+            value: '{{sessionId}}',
+          },
+        ],
+        url: {
+          raw: '{{baseUrl}}/api/academic-sessions?status=',
+          host: ['{{baseUrl}}'],
+          path: ['api', 'academic-sessions'],
+          query: [
+            {
+              key: 'status',
+              value: '',
+              description: 'Optional filter: upcoming | current | closed',
+            },
+          ],
+        },
+      },
+      event: [
+        {
+          listen: 'test',
+          script: {
+            exec: [
+              'const res = pm.response.json();',
+              'pm.test("Status code is 200 or 304", () => {',
+              '  pm.expect([200, 304]).to.include(pm.response.code);',
+              '});',
+              'if (res.result && res.result.length > 0) {',
+              '  const current = res.result.find(s => s.isCurrent) || res.result[0];',
+              '  pm.collectionVariables.set("sessionId", current.id);',
+              '}',
+            ],
+            type: 'text/javascript',
+          },
+        },
+      ],
+    },
+    {
+      name: 'Create Upcoming Session (Super Admin)',
+      request: {
+        method: 'POST',
+        header: [
+          {
+            key: 'Authorization',
+            value: 'Bearer {{superAdminToken}}',
+          },
+          {
+            key: 'X-School-Id',
+            value: '{{schoolId}}',
+          },
+          {
+            key: 'Content-Type',
+            value: 'application/json',
+          },
+        ],
+        body: {
+          mode: 'raw',
+          raw: '{\n  "startDate": "2028-04-01",\n  "endDate": "2029-03-31"\n}',
+        },
+        url: {
+          raw: '{{baseUrl}}/api/academic-sessions',
+          host: ['{{baseUrl}}'],
+          path: ['api', 'academic-sessions'],
+        },
+      },
+      event: [
+        {
+          listen: 'test',
+          script: {
+            exec: [
+              'const res = pm.response.json();',
+              'if (res.result && res.result.id) {',
+              '  pm.collectionVariables.set("sessionId", res.result.id);',
+              '}',
+            ],
+            type: 'text/javascript',
+          },
+        },
+      ],
+    },
+    {
+      name: 'Create Session with Copy Classes/Sections/Fees (Super Admin)',
+      request: {
+        method: 'POST',
+        header: [
+          {
+            key: 'Authorization',
+            value: 'Bearer {{superAdminToken}}',
+          },
+          {
+            key: 'X-School-Id',
+            value: '{{schoolId}}',
+          },
+          {
+            key: 'Content-Type',
+            value: 'application/json',
+          },
+        ],
+        body: {
+          mode: 'raw',
+          raw: '{\n  "name": "2029-30 Cloned",\n  "startDate": "2029-04-01",\n  "endDate": "2030-03-31",\n  "copyFromSessionId": "{{sessionId}}"\n}',
+        },
+        url: {
+          raw: '{{baseUrl}}/api/academic-sessions',
+          host: ['{{baseUrl}}'],
+          path: ['api', 'academic-sessions'],
+        },
+      },
+    },
+    {
+      name: 'Update Academic Session (Super Admin)',
+      request: {
+        method: 'PUT',
+        header: [
+          {
+            key: 'Authorization',
+            value: 'Bearer {{superAdminToken}}',
+          },
+          {
+            key: 'X-School-Id',
+            value: '{{schoolId}}',
+          },
+          {
+            key: 'Content-Type',
+            value: 'application/json',
+          },
+        ],
+        body: {
+          mode: 'raw',
+          raw: '{\n  "name": "2028-29 Extended",\n  "startDate": "2028-04-01",\n  "endDate": "2029-04-15"\n}',
+        },
+        url: {
+          raw: '{{baseUrl}}/api/academic-sessions/{{sessionId}}',
+          host: ['{{baseUrl}}'],
+          path: ['api', 'academic-sessions', '{{sessionId}}'],
+        },
+      },
+    },
+    {
+      name: 'Set Session as Current (Super Admin)',
+      request: {
+        method: 'PATCH',
+        header: [
+          {
+            key: 'Authorization',
+            value: 'Bearer {{superAdminToken}}',
+          },
+          {
+            key: 'X-School-Id',
+            value: '{{schoolId}}',
+          },
+        ],
+        url: {
+          raw: '{{baseUrl}}/api/academic-sessions/{{sessionId}}/set-current',
+          host: ['{{baseUrl}}'],
+          path: ['api', 'academic-sessions', '{{sessionId}}', 'set-current'],
+        },
+      },
+    },
+    {
+      name: 'Get Current User Profile & Selected Session',
+      request: {
+        method: 'GET',
+        header: [
+          {
+            key: 'Authorization',
+            value: 'Bearer {{authToken}}',
+          },
+          {
+            key: 'X-Session-Id',
+            value: '{{sessionId}}',
+          },
+        ],
+        url: {
+          raw: '{{baseUrl}}/api/me',
+          host: ['{{baseUrl}}'],
+          path: ['api', 'me'],
+        },
+      },
+    },
+    {
+      name: 'Set User Session Preference',
+      request: {
+        method: 'PUT',
+        header: [
+          {
+            key: 'Authorization',
+            value: 'Bearer {{authToken}}',
+          },
+          {
+            key: 'Content-Type',
+            value: 'application/json',
+          },
+        ],
+        body: {
+          mode: 'raw',
+          raw: '{\n  "selectedSessionId": "{{sessionId}}"\n}',
+        },
+        url: {
+          raw: '{{baseUrl}}/api/me/preferences',
+          host: ['{{baseUrl}}'],
+          path: ['api', 'me', 'preferences'],
+        },
+      },
+    },
+    {
+      name: 'Get Permitted Quick Actions (RBAC Filtered)',
+      request: {
+        method: 'GET',
+        header: [
+          {
+            key: 'Authorization',
+            value: 'Bearer {{authToken}}',
+          },
+        ],
+        url: {
+          raw: '{{baseUrl}}/api/me/quick-actions',
+          host: ['{{baseUrl}}'],
+          path: ['api', 'me', 'quick-actions'],
+        },
+      },
+    },
+  ],
+};
+
+// 3. Folder: 10. Dashboard & Analytics Widgets
+const dashboardFolder = {
+  name: '10. Dashboard & Analytics Widgets',
+  description: 'Individual widget-level endpoints for the Admin Dashboard Portal. Each widget has isolated caching, ETag validation, timezone-safe date computation, and role gating.',
+  item: [
+    {
+      name: 'Get Dashboard Executive Summary',
+      request: {
+        method: 'GET',
+        header: [
+          {
+            key: 'Authorization',
+            value: 'Bearer {{authToken}}',
+          },
+          {
+            key: 'X-Session-Id',
+            value: '{{sessionId}}',
+          },
+        ],
+        url: {
+          raw: '{{baseUrl}}/api/dashboard/summary',
+          host: ['{{baseUrl}}'],
+          path: ['api', 'dashboard', 'summary'],
+        },
+      },
+    },
+    {
+      name: 'Get Staff Attendance Widget',
+      request: {
+        method: 'GET',
+        header: [
+          {
+            key: 'Authorization',
+            value: 'Bearer {{authToken}}',
+          },
+        ],
+        url: {
+          raw: '{{baseUrl}}/api/dashboard/staff-attendance?date=&limit=5',
+          host: ['{{baseUrl}}'],
+          path: ['api', 'dashboard', 'staff-attendance'],
+          query: [
+            {
+              key: 'date',
+              value: '',
+              description: 'Optional date YYYY-MM-DD (defaults to server today in school timezone)',
+            },
+            {
+              key: 'limit',
+              value: '5',
+              description: 'Max records returned (default 5)',
+            },
+          ],
+        },
+      },
+    },
+    {
+      name: 'Get Communication Balance Widget',
+      request: {
+        method: 'GET',
+        header: [
+          {
+            key: 'Authorization',
+            value: 'Bearer {{authToken}}',
+          },
+        ],
+        url: {
+          raw: '{{baseUrl}}/api/dashboard/communication-balance',
+          host: ['{{baseUrl}}'],
+          path: ['api', 'dashboard', 'communication-balance'],
+        },
+      },
+    },
+    {
+      name: 'Get Pending Actions Widget',
+      request: {
+        method: 'GET',
+        header: [
+          {
+            key: 'Authorization',
+            value: 'Bearer {{authToken}}',
+          },
+          {
+            key: 'X-Session-Id',
+            value: '{{sessionId}}',
+          },
+        ],
+        url: {
+          raw: '{{baseUrl}}/api/dashboard/pending-actions',
+          host: ['{{baseUrl}}'],
+          path: ['api', 'dashboard', 'pending-actions'],
+        },
+      },
+    },
+    {
+      name: 'Get Fee Trend Widget (7 Days)',
+      request: {
+        method: 'GET',
+        header: [
+          {
+            key: 'Authorization',
+            value: 'Bearer {{authToken}}',
+          },
+        ],
+        url: {
+          raw: '{{baseUrl}}/api/dashboard/fee-trend?days=7',
+          host: ['{{baseUrl}}'],
+          path: ['api', 'dashboard', 'fee-trend'],
+          query: [
+            {
+              key: 'days',
+              value: '7',
+            },
+          ],
+        },
+      },
+    },
+    {
+      name: 'Get Fee Trend Widget (30 Days)',
+      request: {
+        method: 'GET',
+        header: [
+          {
+            key: 'Authorization',
+            value: 'Bearer {{authToken}}',
+          },
+        ],
+        url: {
+          raw: '{{baseUrl}}/api/dashboard/fee-trend?days=30',
+          host: ['{{baseUrl}}'],
+          path: ['api', 'dashboard', 'fee-trend'],
+          query: [
+            {
+              key: 'days',
+              value: '30',
+            },
+          ],
+        },
+      },
+    },
+    {
+      name: 'Get Calendar Events & Holidays (Range)',
+      request: {
+        method: 'GET',
+        header: [
+          {
+            key: 'Authorization',
+            value: 'Bearer {{authToken}}',
+          },
+        ],
+        url: {
+          raw: '{{baseUrl}}/api/calendar/events?from=2026-11-01&to=2026-11-30',
+          host: ['{{baseUrl}}'],
+          path: ['api', 'calendar', 'events'],
+          query: [
+            {
+              key: 'from',
+              value: '2026-11-01',
+            },
+            {
+              key: 'to',
+              value: '2026-11-30',
+            },
+          ],
+        },
+      },
+    },
+    {
+      name: 'Get Upcoming Events (Next 30 Days)',
+      request: {
+        method: 'GET',
+        header: [
+          {
+            key: 'Authorization',
+            value: 'Bearer {{authToken}}',
+          },
+        ],
+        url: {
+          raw: '{{baseUrl}}/api/events/upcoming?days=30&limit=5',
+          host: ['{{baseUrl}}'],
+          path: ['api', 'events', 'upcoming'],
+          query: [
+            {
+              key: 'days',
+              value: '30',
+            },
+            {
+              key: 'limit',
+              value: '5',
+            },
+          ],
+        },
+      },
+    },
+    {
+      name: 'Create Calendar Event or Holiday',
+      request: {
+        method: 'POST',
+        header: [
+          {
+            key: 'Authorization',
+            value: 'Bearer {{authToken}}',
+          },
+          {
+            key: 'Content-Type',
+            value: 'application/json',
+          },
+        ],
+        body: {
+          mode: 'raw',
+          raw: '{\n  "title": "Annual Sports Meet 2026",\n  "type": "event",\n  "date": "2026-11-28",\n  "endDate": "2026-11-29",\n  "description": "Annual Inter-House Sports Championship",\n  "notifyUsers": true\n}',
+        },
+        url: {
+          raw: '{{baseUrl}}/api/calendar/events',
+          host: ['{{baseUrl}}'],
+          path: ['api', 'calendar', 'events'],
+        },
+      },
+    },
+    {
+      name: 'Get Notifications Unread Count (Bell Badge)',
+      request: {
+        method: 'GET',
+        header: [
+          {
+            key: 'Authorization',
+            value: 'Bearer {{authToken}}',
+          },
+        ],
+        url: {
+          raw: '{{baseUrl}}/api/notifications/unread-count',
+          host: ['{{baseUrl}}'],
+          path: ['api', 'notifications', 'unread-count'],
+        },
+      },
+    },
+  ],
+};
+
+// Filter out existing folders if already present, and append
+collection.item = collection.item.filter(
+  (folder: any) =>
+    folder.name !== '9. Academic Sessions & Preferences' &&
+    folder.name !== '10. Dashboard & Analytics Widgets'
+);
+
+collection.item.push(sessionFolder);
+collection.item.push(dashboardFolder);
+
+fs.writeFileSync(collectionPath, JSON.stringify(collection, null, 2), 'utf8');
+
+const totalRequests = collection.item.reduce(
+  (acc: number, f: any) => acc + (f.item ? f.item.length : 1),
+  0
+);
+console.log(`✅ Successfully updated Postman Collection! Total folders: ${collection.item.length}, Total requests: ${totalRequests}`);
+

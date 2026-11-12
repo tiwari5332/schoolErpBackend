@@ -25,13 +25,20 @@
 
 ### Project Structure (Feature-Wise Modules under `src/modules/`):
 - `src/modules/academic/` -> `academic.controller.ts`, `academic.service.ts`, `academic.route.ts`
+- `src/modules/session/` -> `session.controller.ts`, `session.service.ts`, `session.route.ts`, `session.dto.ts`
+- `src/modules/me/` -> `me.controller.ts`, `me.route.ts`
+- `src/modules/dashboard/` -> `dashboard.controller.ts`, `dashboard.service.ts`, `dashboard.route.ts`, `dashboard.dto.ts`
+- `src/modules/calendar/` -> `calendar.controller.ts`, `calendar.service.ts`, `calendar.route.ts`
 - `src/modules/auth/` -> `auth.controller.ts`, `auth.service.ts`, `auth.route.ts`
 - `src/modules/billing/` -> `billing.controller.ts`, `billing.service.ts`, `billing.route.ts`
 - `src/modules/fee/` -> `fee.controller.ts`, `fee.service.ts`, `fee.route.ts`
 - `src/modules/onboarding/` -> `onboarding.controller.ts`, `onboarding.service.ts`, `onboarding.route.ts`
 - `src/modules/role/` -> `role.controller.ts`, `role.service.ts`, `role.route.ts`
-- `src/modules/teacher/` -> `teacher.controller.ts`, `teacher.service.ts`, `teacher.route.ts`
-- `src/modules/notification/` -> `notification.service.ts`
+- `src/modules/teacher/` -> `teacher.controller.ts`, `teacher.service.ts`, `teacher.route.ts`, `teacher.dto.ts`
+- `src/modules/student/` -> `student.controller.ts`, `student.service.ts`, `student.route.ts`, `student.dto.ts`
+- `src/modules/communication/` -> `communication.controller.ts`, `communication.service.ts`, `communication.routes.ts`
+- `src/modules/notification/` -> `notification.service.ts`, `notification.controller.ts`, `notification.route.ts`
+- `src/modules/attendance/` -> `attendance.controller.ts`, `attendance.service.ts`, `attendance.route.ts`
 - `src/routes/index.ts` -> Central route mount point importing from feature modules.
 
 ---
@@ -168,8 +175,14 @@
 - `Refund`: Refund record (`payment`, `amount`, `mode: CREDIT_ADJUSTMENT|MANUAL_CASH`, `reason`, `approvedByAdminId`, `processedAt`). Never mutates original `Payment`.
 
 ### 6. Communication Hub (`com.schoolerp.communication`):
-- `Broadcast`: Communication record (`school`, `senderTeacherId`, `channel: SMS|WHATSAPP|IN_APP`, `messageBody`, `recipientCount`, `scheduledAt`, `sentAt`, `status`).
-- `MessageTemplate`: Pre-approved notification templates.
+- `Broadcast`: Communication record (`school`, `senderTeacherId`, `channel: SMS|WHATSAPP|EMAIL|IN_APP`, `messageBody`, `recipientCount`, `scheduledAt`, `sentAt`, `status`).
+- `MessageTemplate`: Pre-approved notification templates (`name`, `code`, `template`, `channel`).
+- `TeacherBroadcastQuota`: Quota limits and tracking per teacher, channel, and yearMonth (`teacherId`, `channel`, `quotaLimit`, `quotaUsed`, `yearMonth`).
+
+### 7. Attendance Engine (`com.schoolerp.attendance`):
+- `StudentAttendance`: Attendance mark per student (`school`, `student`, `section`, `academicYear`, `date`, `attendanceType: DAILY_HOMEROOM|SUBJECT_WISE`, `subject`, `status: PRESENT|ABSENT|LATE|HALF_DAY|EXCUSED`, `remarks`, `recordedByTeacher`).
+- `StaffAttendance`: Biometric/RFID/manual check-in & check-out (`school`, `teacher`, `date`, `checkInTime`, `checkOutTime`, `status: PRESENT|ABSENT|HALF_DAY|ON_LEAVE`, `source: BIOMETRIC|RFID|MANUAL|GEOFENCE`, `remarks`).
+- `MonthlyAttendanceLedger`: Monthly roll-up & exam eligibility (`school`, `student`, `section`, `yearMonth`, `totalWorkingDays`, `presentDays`, `absentDays`, `lateDays`, `halfDays`, `excusedDays`, `percentage`, `examEligible`).
 
 ---
 
@@ -214,6 +227,8 @@
 - `PUT    /api/academic/sections/{id}` [ACADEMIC_SETUP_MANAGE]
 - `PATCH  /api/academic/sections/{id}/class-teacher?teacherId=` [ACADEMIC_SETUP_MANAGE]
 - `POST   /api/academic/rollover?fromAcademicYearId=&toAcademicYearId=` [ACADEMIC_SETUP_MANAGE] -> `AcademicRolloverResult` (Clones sections & subject mappings to new academic year)
+- `POST   /api/academic/progression/batch-promote` [ACADEMIC_SETUP_MANAGE] -> `BatchPromotionResult` (Step 4 rollover: updates old enrollment to PROMOTED/RETAINED, creates new ACTIVE enrollment in destination section)
+- `GET    /api/academic/students/{studentId}/enrollment-history` [ACADEMIC_SETUP_VIEW] -> `List<EnrollmentHistoryResponse>` (Historical progression chain across academic years)
 - `GET    /api/academic/subjects` [ACADEMIC_SETUP_VIEW]
 - `POST   /api/academic/subjects` [ACADEMIC_SETUP_MANAGE]
 - `POST   /api/academic/subjects/map-to-section` [ACADEMIC_SETUP_MANAGE] -> `List<UUID>` (Maps subjects to section via `subjectIds` list)
@@ -223,20 +238,71 @@
 - `PUT    /api/academic/subject-types/{id}` [ACADEMIC_SETUP_MANAGE]
 - `DELETE /api/academic/subject-types/{id}` [ACADEMIC_SETUP_MANAGE]
 
+### Academic Sessions & User Preferences (`/api/academic-sessions`, `/api/me`):
+- `GET   /api/academic-sessions?status=` [All Authenticated] -> `List<AcademicSessionResponse>` (Dropdown supplier with `Cache-Control: private, max-age=300` and `ETag`)
+- `POST  /api/academic-sessions` [SUPER_ADMIN only] -> `AcademicSessionResponse` (Creates upcoming session; auto-generates name if omitted; optional atomic cloning with `copyFromSessionId`)
+- `PUT   /api/academic-sessions/{id}` [SUPER_ADMIN only] -> `AcademicSessionResponse` (Editable name & dates; blocks date edits on closed sessions; validates date overlap)
+- `PATCH /api/academic-sessions/{id}/set-current` [SUPER_ADMIN only] -> `AcademicSessionResponse` (Atomic transaction marking old current as closed, target as current; records audit log)
+- `GET   /api/me` [All Authenticated] -> User Profile with `selectedSessionId` (fallback to current session ID)
+- `PUT   /api/me/preferences` [All Authenticated] -> `{ selectedSessionId }` (Validates session belongs to school)
+- `GET   /api/me/quick-actions` [All Authenticated] -> `{ actions }` (Permitted quick actions derived from RBAC permissions)
+
+### Dashboard & Analytics Widgets (`/api/dashboard`):
+- `GET /api/dashboard/summary` [All Authenticated, Role-Gated] -> Executive summary (students, staff, fees, attendance, dayType; 60s cache per school+session)
+- `GET /api/dashboard/staff-attendance?date=&limit=` [Excludes ACCOUNTANT] -> Staff attendance roll-call ordered absent -> notMarked -> leave -> present (60s cache)
+- `GET /api/dashboard/communication-balance` [All Authenticated] -> Remaining & total quotas for SMS, WhatsApp, Email with `lowBalance` flag (300s cache)
+- `GET /api/dashboard/pending-actions` [All Authenticated] -> Unmarked student/staff attendance & pending approvals backlog (60s cache)
+- `GET /api/dashboard/fee-trend?days=7|30` [Excludes TEACHER] -> Daily collection points, total & previous period total in paise (300s cache)
+
+### Calendar, Events & Notifications (`/api/calendar`, `/api/events`, `/api/notifications`):
+- `GET  /api/calendar/events?from=&to=` [All Authenticated] -> Range events, holidays, fee dues & Sunday weekly offs (max 62 days)
+- `GET  /api/events/upcoming?days=30&limit=5` [All Authenticated] -> Next 30 days events from server today
+- `POST /api/calendar/events` [EVENT_CREATE | SUPER_ADMIN] -> Creates calendar event / holiday / exam
+- `GET  /api/notifications/unread-count` [All Authenticated] -> Unread bell badge count for actor
+
 ### Onboarding (`/api/onboarding`):
 - `POST /api/onboarding/students` [STUDENT_CREATE] -> `StudentResponse` (Atomic Student + Enrollment + Guardian creation)
 - `POST /api/onboarding/students/bulk` (multipart CSV) [STUDENT_CREATE] -> `BulkUploadResult`
+- `PUT  /api/onboarding/students/{id}` [STUDENT_CREATE] -> `StudentDetailsResponse` (Alias for updating student)
 - `POST /api/onboarding/teachers` [TEACHER_CREATE] -> `TeacherResponse`
 - `POST /api/onboarding/teachers/bulk` (multipart CSV) [TEACHER_CREATE] -> `BulkUploadResult`
+- `PUT  /api/onboarding/teachers/{id}` [TEACHER_CREATE] -> `Teacher` (Alias for updating staff)
 
-### Teachers (`/api/teachers`):
-- `GET /api/teachers` [TEACHER_VIEW | ACADEMIC_SETUP_VIEW] -> `List<TeacherSummaryResponse>` (All teachers in current school; supports optional `?sectionId=`)
-- `GET /api/teachers/section/{sectionId}` [TEACHER_VIEW | ACADEMIC_SETUP_VIEW] -> `List<SectionTeacherResponse>` (All teachers of particular section: homeroom teacher + subject teachers with subject mappings)
+### Teachers & Staff (`/api/teachers`):
+- `GET   /api/teachers` [TEACHER_VIEW | ACADEMIC_SETUP_VIEW] -> `List<TeacherSummaryResponse>` (All teachers in current school; supports optional `?sectionId=`)
+- `GET   /api/teachers/{id}` [TEACHER_VIEW | ACADEMIC_SETUP_VIEW] -> Teacher profile with active department mapping
+- `GET   /api/teachers/section/{sectionId}` [TEACHER_VIEW | ACADEMIC_SETUP_VIEW] -> `List<SectionTeacherResponse>` (All teachers of particular section: homeroom teacher + subject teachers with subject mappings)
+- `PUT   /api/teachers/{id}` [TEACHER_CREATE] -> Full staff update (name, designation, address, contact, status, departmentId; validates mobile uniqueness)
+- `PATCH /api/teachers/{id}` [TEACHER_CREATE] -> Partial staff update
+
+### Students & Directory (`/api/students`):
+- `GET   /api/students?search=&sectionId=&limit=&offset=` [STUDENT_VIEW] -> Paginated student directory with active enrollment, roll number, and primary parent/guardian info
+- `GET   /api/students/{id}` [STUDENT_VIEW] -> Single student details with active section, grade name, roll number, and primary parent account info
+- `PUT   /api/students/{id}` [STUDENT_CREATE] -> Full student update (personal details, active enrollment section/rollNo reassignment, parent account and guardian details)
+- `PATCH /api/students/{id}` [STUDENT_CREATE] -> Partial student update (atomic dynamic updates across students, enrollments, guardians, and parent_accounts)
 
 ### Roles & RBAC (`/api/roles`):
 - `GET  /api/roles` (List school custom roles)
 - `POST /api/roles` (Create school custom role)
 - `POST /api/roles/assign` (Assign role to actor)
+
+### Communication Hub (`/api/broadcast`):
+- `GET  /api/broadcast/list?channel=&status=` [BROADCAST_VIEW] -> `List<Broadcast>` (Get broadcast list for school)
+- `POST /api/broadcast/send` [BROADCAST_SEND] -> `SendBroadcastResult` (Dispatches multi-channel broadcast, enforces TeacherBroadcastQuota, spends monthly plan credits then unexpired top-up credits)
+- `GET  /api/broadcast/templates?channel=` [BROADCAST_VIEW] -> `List<MessageTemplate>` (Pre-approved message templates)
+- `POST /api/broadcast/templates` [BROADCAST_SEND] -> `MessageTemplate` (Create message template)
+- `POST /api/broadcast/quotas/assign` [BROADCAST_SEND] -> `TeacherBroadcastQuota` (Assigns monthly quota to teacher)
+- `GET  /api/broadcast/quotas/teacher/{teacherId}?yearMonth=` [BROADCAST_VIEW] -> `List<TeacherBroadcastQuota>` (Check quota & usage)
+
+### Attendance Engine (`/api/attendance`):
+- `POST /api/attendance/daily` [ATTENDANCE_RECORD] -> `RecordDailyAttendanceResult` (Morning homeroom attendance by class teacher, automatically dispatches parent absence alert if ABSENT, updates monthly ledger)
+- `POST /api/attendance/subject` [ATTENDANCE_RECORD] -> `RecordSubjectAttendanceResult` (Lecture slot/subject-wise attendance by subject teacher)
+- `GET  /api/attendance/sections/{sectionId}?date=&attendanceType=&subjectId=` [ATTENDANCE_VIEW] -> `List<StudentAttendanceItem>` (Section-wide daily attendance)
+- `GET  /api/attendance/students/{studentId}/summary?yearMonth=` [ATTENDANCE_VIEW] -> `StudentAttendanceSummaryResult` (Student cumulative attendance & monthly ledger with exam eligibility)
+- `POST /api/attendance/staff/check-in` [ATTENDANCE_RECORD] -> `StaffAttendance` (Biometric/RFID/manual check-in)
+- `POST /api/attendance/staff/check-out` [ATTENDANCE_RECORD] -> `StaffAttendance` (Check-out with automatic half-day/present calculation)
+- `GET  /api/attendance/staff?date=&yearMonth=` [ATTENDANCE_VIEW] -> `List<StaffAttendanceItem>` (Staff attendance history)
+
 
 ### Fee Management (`/api/fee`, `/api/fee-invoices`):
 - `GET  /api/fee-invoices/search?status=&classId=&yearMonth=` [FEE_INVOICE_VIEW]
@@ -286,7 +352,14 @@
 7. **Idempotent Webhooks & Payments**:
    - `Payment.gatewayTxnId` is unique. Duplicate webhook notifications result in idempotent no-ops.
 8. **Notification System**:
-   - Dispatched via `NotificationFactory` -> `EmailNotificationService`, `SmsNotificationService`, `WhatsAppNotificationService`.
+   - Dispatched via `NotificationService` -> `dispatchEmail`, `dispatchSms`, `dispatchWhatsApp`.
+9. **Parent Absence Alerting**:
+   - Marking a student `ABSENT` during morning homeroom roll call automatically triggers an SMS/WhatsApp notification to the primary guardian.
+10. **Multi-Tier Broadcast Quota & Metering**:
+    - Teachers cannot broadcast beyond `TeacherBroadcastQuota`.
+    - SMS and WhatsApp broadcasts spend monthly plan quota first, then unexpired top-up credits from `TopUpPack`.
+11. **Student Progression & Placement History**:
+    - Batch promotion closes previous enrollment with `PROMOTED` or `RETAINED` and creates a single active enrollment in the destination section, enforcing the partial unique index `idx_single_active_enrollment`.
 
 ---
 
@@ -298,6 +371,7 @@
 - **LOW LEVEL DESIGN (`school-erp-lld.md`)**: Complete LLD specifications, entity diagrams, and database dictionary.
   - Interactive HTML Viewer: `school-erp-lld-diagram.html`
   - Vector SVG Diagram: `school-erp-lld.svg` (and `school-erp-lld-diagram.svg`)
+- **POSTMAN COLLECTION (`School_ERP.postman_collection.json`)**: Complete 79-request Postman v2.1.0 collection covering all endpoints across 9 domain modules.
 - **DIAGRAM GENERATION RULE**: Do **NOT** regenerate or modify diagrams (`school-erp-lld.svg`, `school-erp-lld-diagram.html`, `generate_diagram_svg.py`, etc.) automatically. Only modify or regenerate diagrams when the user explicitly requests it.
 - **CURL REQUEST RULE**: When the user asks for cURL commands, output **ONLY** the cURL commands (no explanations, no sample responses, no extra commentary). Always use base URL `https://miraculous-education-production-bee2.up.railway.app` and header `Authorization: Bearer {{authToken}}`.
 

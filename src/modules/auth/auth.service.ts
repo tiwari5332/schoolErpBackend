@@ -7,6 +7,22 @@ import { BusinessRuleException, NotFoundError, UnauthorizedError } from '../../u
 import { Logger } from '../../libs/logger';
 
 export class AuthService {
+  private static async getSchoolPlanFeatures(schoolId: string): Promise<string[]> {
+    try {
+      const res = await db.query<{ code: string }>(
+        `SELECT f.code
+         FROM school_subscriptions ss
+         JOIN plan_features pf ON ss.plan_id = pf.plan_id AND pf.enabled = true
+         JOIN features f ON pf.feature_id = f.id
+         WHERE ss.school_id = $1 AND ss.status = 'ACTIVE'`,
+        [schoolId]
+      );
+      return res.rows.map((r) => r.code);
+    } catch {
+      return [];
+    }
+  }
+
   private static async deactivateSessions(actorType: string, actorId: string) {
     await db.query(
       `UPDATE auth_sessions SET active = false WHERE actor_type = $1 AND actor_id = $2 AND active = true`,
@@ -54,8 +70,8 @@ export class AuthService {
 
     const result = await db.transaction(async (client) => {
       const schoolRes = await client.query(
-        `INSERT INTO schools (id, name, address, "contactEmail", "contactPhone", "schoolId")
-         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)
+        `INSERT INTO schools (id, name, address, "contactEmail", "contactPhone", "schoolId", updated_at)
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, NOW())
          RETURNING id, name`,
         [data.schoolName, data.schoolAddress || null, data.contactEmail, data.contactPhone, customSchoolIdCode]
       );
@@ -153,6 +169,7 @@ export class AuthService {
       [admin.school_id]
     );
     const subscription = subRes.rows[0];
+    const planFeatures = await this.getSchoolPlanFeatures(admin.school_id);
 
     await this.deactivateSessions(ActorType.ADMIN, admin.id);
 
@@ -161,7 +178,7 @@ export class AuthService {
       actorType: ActorType.ADMIN,
       schoolId: admin.school_id,
       planCode: subscription?.plan_code || PlanCode.BASIC,
-      features: [],
+      features: planFeatures,
     });
 
     const tokenHash = HashUtils.computeTokenHash(token);
@@ -198,6 +215,7 @@ export class AuthService {
       [teacher.school_id]
     );
     const subscription = subRes.rows[0];
+    const planFeatures = await this.getSchoolPlanFeatures(teacher.school_id);
 
     await this.deactivateSessions(ActorType.TEACHER, teacher.id);
 
@@ -206,7 +224,7 @@ export class AuthService {
       actorType: ActorType.TEACHER,
       schoolId: teacher.school_id,
       planCode: subscription?.plan_code || PlanCode.BASIC,
-      features: [],
+      features: planFeatures,
     });
 
     const tokenHash = HashUtils.computeTokenHash(token);
@@ -243,6 +261,7 @@ export class AuthService {
       [parent.school_id]
     );
     const subscription = subRes.rows[0];
+    const planFeatures = await this.getSchoolPlanFeatures(parent.school_id);
 
     await this.deactivateSessions(ActorType.PARENT, parent.id);
 
@@ -251,7 +270,7 @@ export class AuthService {
       actorType: ActorType.PARENT,
       schoolId: parent.school_id,
       planCode: subscription?.plan_code || PlanCode.BASIC,
-      features: [],
+      features: planFeatures,
     });
 
     const tokenHash = HashUtils.computeTokenHash(token);

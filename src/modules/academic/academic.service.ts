@@ -1,6 +1,13 @@
 import db from '../../config/database';
 import { BusinessRuleException, NotFoundError } from '../../utils/response';
 
+export interface CreateSectionInput {
+  name: string;
+  capacity?: number;
+  classTeacherId?: string;
+  academicYearId?: string;
+}
+
 export class AcademicService {
   // --- Academic Years ---
 
@@ -96,20 +103,71 @@ export class AcademicService {
     return res.rows;
   }
 
-  static async createGrade(schoolId: string, name: string, sequenceOrder: number) {
+  static async createGrade(
+    schoolId: string,
+    name: string,
+    sequenceOrder: number,
+    sections?: Array<string | CreateSectionInput>,
+    academicYearId?: string
+  ) {
     const existingRes = await db.query(
       `SELECT id FROM grades WHERE school_id = $1 AND name = $2`,
       [schoolId, name]
     );
     if (existingRes.rows.length > 0) throw new BusinessRuleException(`Grade '${name}' already exists`);
 
-    const res = await db.query(
-      `INSERT INTO grades (id, school_id, name, sequence_order)
-       VALUES (gen_random_uuid(), $1, $2, $3)
-       RETURNING *`,
-      [schoolId, name, sequenceOrder]
-    );
-    return res.rows[0];
+    return db.transaction(async (client) => {
+      const res = await client.query(
+        `INSERT INTO grades (id, school_id, name, sequence_order)
+         VALUES (gen_random_uuid(), $1, $2, $3)
+         RETURNING *`,
+        [schoolId, name, sequenceOrder]
+      );
+      const grade = res.rows[0];
+
+      const createdSections: any[] = [];
+
+      if (sections && Array.isArray(sections) && sections.length > 0) {
+        let fallbackYearId = academicYearId;
+        if (!fallbackYearId) {
+          const activeYearRes = await client.query(
+            `SELECT id FROM academic_years WHERE school_id = $1 AND status = 'ACTIVE' LIMIT 1`,
+            [schoolId]
+          );
+          fallbackYearId = activeYearRes.rows[0]?.id;
+        }
+
+        for (const sec of sections) {
+          const secName = typeof sec === 'string' ? sec : sec.name;
+          const secCapacity = typeof sec === 'object' && sec.capacity !== undefined ? sec.capacity : 40;
+          const secTeacherId = typeof sec === 'object' && sec.classTeacherId ? sec.classTeacherId : null;
+          const secYearId = typeof sec === 'object' && sec.academicYearId ? sec.academicYearId : fallbackYearId;
+
+          if (!secName || !secName.trim()) {
+            throw new BusinessRuleException('Section name cannot be empty');
+          }
+
+          if (!secYearId) {
+            throw new BusinessRuleException(
+              `An active academic year or academicYearId is required to create section '${secName}'.`
+            );
+          }
+
+          const secRes = await client.query(
+            `INSERT INTO sections (id, school_id, grade_id, academic_year_id, name, capacity, class_teacher_id)
+             VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6)
+             RETURNING *`,
+            [schoolId, grade.id, secYearId, secName.trim(), secCapacity, secTeacherId]
+          );
+          createdSections.push(secRes.rows[0]);
+        }
+      }
+
+      return {
+        ...grade,
+        sections: createdSections,
+      };
+    });
   }
 
   static async updateGrade(schoolId: string, id: string, name: string, sequenceOrder: number) {
@@ -378,5 +436,130 @@ export class AcademicService {
       clonedSectionsCount,
       clonedSubjectsCount,
     };
+  }
+
+  // --- Student Progression & Historical Placement (HLD Section 7.2 - 7.4) ---
+
+  /**
+   * Batch promote or retain students from an old session to a new session (Step 4 of rollover)
+   */
+  static async batchPromoteStudents(
+    schoolId: string,
+    academicYearId: string,
+    promotions: Array<{
+      studentId: string;
+      destinationSectionId: string;
+      rollNo?: number;
+      status: 'PROMOTED' | 'RETAINED';
+    }>
+  ) {
+    if (!promotions || promotions.length === 0) {
+      throw new BusinessRuleException('No students provided for promotion');
+    }
+
+    // Verify academic year exists
+    await this.getAcademicYearById(schoolId, academicYearId);
+
+    // Group promotions by destinationSectionId to verify capacities
+    const sectionIncomingCount = new Map<string, number>();
+    for (const p of promotions) {
+      sectionIncomingCount.set(
+        p.destinationSectionId,
+        (sectionIncomingCount.get(p.destinationSectionId) || 0) + 1
+      );
+    }
+
+    for (const [secId, incoming] of sectionIncomingCount.entries()) {
+      const secRes = await db.query(
+        `SELECT s.id, s.capacity, s.name, COUNT(e.id)::int as current_active
+         FROM sections s
+         LEFT JOIN enrollments e ON s.id = e.section_id AND e.status = 'ACTIVE'
+         WHERE s.id = $1 AND s.school_id = $2
+         GROUP BY s.id`,
+        [secId, schoolId]
+      );
+      const sec = secRes.rows[0];
+      if (!sec) throw new NotFoundError(`Destination section not found: ${secId}`);
+
+      if (sec.current_active + incoming > sec.capacity) {
+        throw new BusinessRuleException(
+          `Section '${sec.name}' capacity exceeded (${sec.current_active + incoming}/${sec.capacity})`
+        );
+      }
+    }
+
+    let promotedCount = 0;
+    let retainedCount = 0;
+
+    const results = await db.transaction(async (client) => {
+      const items = [];
+
+      for (const p of promotions) {
+        const closeStatus = p.status === 'RETAINED' ? 'RETAINED' : 'PROMOTED';
+
+        // 1. Close out previous ACTIVE enrollment
+        await client.query(
+          `UPDATE enrollments
+           SET status = $1
+           WHERE student_id = $2 AND status = 'ACTIVE'`,
+          [closeStatus, p.studentId]
+        );
+
+        // 2. Create new ACTIVE enrollment in destination section
+        const newEnrollRes = await client.query(
+          `INSERT INTO enrollments (id, student_id, section_id, roll_no, enrolled_at, status)
+           VALUES (gen_random_uuid(), $1, $2, $3, NOW(), 'ACTIVE')
+           RETURNING *`,
+          [p.studentId, p.destinationSectionId, p.rollNo || null]
+        );
+
+        if (closeStatus === 'PROMOTED') promotedCount++;
+        else retainedCount++;
+
+        items.push(newEnrollRes.rows[0]);
+      }
+
+      return items;
+    });
+
+    return {
+      message: 'Student progression completed successfully',
+      promotedCount,
+      retainedCount,
+      totalProcessed: promotions.length,
+      enrollments: results,
+    };
+  }
+
+  /**
+   * Placement history chain for a student (HLD Section 7.3)
+   */
+  static async getStudentEnrollmentHistory(schoolId: string, studentId: string) {
+    const res = await db.query(
+      `SELECT
+         e.id as enrollment_id,
+         e.student_id,
+         e.roll_no,
+         e.status,
+         e.enrolled_at,
+         sec.id as section_id,
+         sec.name as section_name,
+         g.id as grade_id,
+         g.name as grade_name,
+         ay.id as academic_year_id,
+         ay.name as academic_year_name,
+         ay.start_date,
+         ay.end_date
+       FROM enrollments e
+       JOIN sections sec ON e.section_id = sec.id
+       JOIN grades g ON sec.grade_id = g.id
+       JOIN academic_years ay ON sec.academic_year_id = ay.id
+       JOIN students st ON e.student_id = st.id
+       WHERE e.student_id = $1 AND st.school_id = $2
+       ORDER BY ay.start_date ASC, e.enrolled_at ASC`,
+      [studentId, schoolId]
+    );
+
+    return res.rows;
   }
 }

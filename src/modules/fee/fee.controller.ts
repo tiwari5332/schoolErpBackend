@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { ExtendedRequest } from '../../middleware/logger.middleware';
 import { getTenantSchoolId } from '../../middleware/tenant.middleware';
 import { FeeService } from './fee.service';
 import { ApiResponse } from '../../utils/response';
@@ -103,7 +104,7 @@ export class FeeController {
     }
   }
 
-  static async recordManualCashPayment(req: Request, res: Response, next: NextFunction) {
+  static async recordManualCashPayment(req: ExtendedRequest, res: Response, next: NextFunction) {
     try {
       const schoolId = getTenantSchoolId(req)!;
       const adminId = req.user!.actorId;
@@ -114,7 +115,21 @@ export class FeeController {
     }
   }
 
-  static async applyWaiver(req: Request, res: Response, next: NextFunction) {
+  static async recordBulkPayment(req: ExtendedRequest, res: Response, next: NextFunction) {
+    try {
+      const schoolId = getTenantSchoolId(req)!;
+      const adminId = req.user?.actorType === 'ADMIN' ? req.user.actorId : undefined;
+      const result = await FeeService.recordBulkPayment(schoolId, {
+        ...req.body,
+        recordedByAdminId: adminId,
+      });
+      return ApiResponse.success(res, result, 201);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async applyWaiver(req: ExtendedRequest, res: Response, next: NextFunction) {
     try {
       const invoiceId = req.params.invoiceId;
       const adminId = req.user!.actorId;
@@ -126,7 +141,7 @@ export class FeeController {
     }
   }
 
-  static async processRefund(req: Request, res: Response, next: NextFunction) {
+  static async processRefund(req: ExtendedRequest, res: Response, next: NextFunction) {
     try {
       const paymentId = req.params.paymentId;
       const adminId = req.user!.actorId;

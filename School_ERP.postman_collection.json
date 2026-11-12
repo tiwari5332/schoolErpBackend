@@ -1,0 +1,3759 @@
+{
+  "info": {
+    "_postman_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+    "name": "School ERP SaaS API Collection",
+    "description": "Complete production-ready Postman collection for School ERP SaaS Platform covering Tenancy, Auth, RBAC, Academic Setup, Student Progression, Onboarding, Fees & Ledger, SaaS Billing, Attendance Engine, and Communication Hub.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://miraculous-education-production-bee2.up.railway.app",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "signupToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "schoolId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "academicYearId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "gradeId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sectionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "subjectId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "studentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "teacherId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "invoiceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paymentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "currentYearMonth",
+      "value": "2026-11",
+      "type": "string"
+    },
+    {
+      "key": "currentDate",
+      "value": "2026-11-07",
+      "type": "string"
+    },
+    {
+      "key": "sessionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "superAdminToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Public & Health",
+      "item": [
+        {
+          "name": "Root Ping",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                ""
+              ]
+            }
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Public API Ping",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/ping",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "ping"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Role Permissions by ID (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/schools/{{schoolId}}/roles/:roleId/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "schools",
+                "{{schoolId}}",
+                "roles",
+                ":roleId",
+                "permissions"
+              ],
+              "variable": [
+                {
+                  "key": "roleId",
+                  "value": "role-uuid"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Role Permissions by Name (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/schools/{{schoolId}}/roles/by-name/:roleName/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "schools",
+                "{{schoolId}}",
+                "roles",
+                "by-name",
+                ":roleName",
+                "permissions"
+              ],
+              "variable": [
+                {
+                  "key": "roleName",
+                  "value": "TEACHER"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Authentication & Sessions",
+      "item": [
+        {
+          "name": "Register School & Admin (Public)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.result) {",
+                  "  if (res.result.token) pm.collectionVariables.set('authToken', res.result.token);",
+                  "  if (res.result.schoolId) pm.collectionVariables.set('schoolId', res.result.schoolId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schoolName\": \"St. Xavier Global Academy\",\n  \"schoolAddress\": \"Plot 44, Knowledge City, Bangalore\",\n  \"contactEmail\": \"admin@stxavier.edu.in\",\n  \"contactPhone\": \"9876543210\",\n  \"adminName\": \"Father Joseph (Principal)\",\n  \"adminEmail\": \"joseph.admin@stxavier.edu.in\",\n  \"adminMsisdn\": \"9876543210\",\n  \"adminPassword\": \"SecureAdminPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.result && res.result.token) {",
+                  "  pm.collectionVariables.set('authToken', res.result.token);",
+                  "  pm.collectionVariables.set('schoolId', res.result.schoolId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"joseph.admin@stxavier.edu.in\",\n  \"password\": \"SecureAdminPass123!\",\n  \"deviceId\": \"admin-macbook-pro\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/admin/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "admin",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Teacher Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.result && res.result.token) {",
+                  "  pm.collectionVariables.set('authToken', res.result.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeCode\": \"EMP1001\",\n  \"schoolId\": \"{{schoolId}}\",\n  \"password\": \"TeacherPass123!\",\n  \"deviceId\": \"teacher-ipad-air\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/teacher/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "teacher",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Parent Step 1 - Discover Schools by Mobile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/parent/schools?msisdn=9876543210",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "parent",
+                "schools"
+              ],
+              "query": [
+                {
+                  "key": "msisdn",
+                  "value": "9876543210"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Parent Step 2 - Authenticated Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.result && res.result.token) {",
+                  "  pm.collectionVariables.set('authToken', res.result.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schoolId\": \"{{schoolId}}\",\n  \"msisdn\": \"9876543210\",\n  \"password\": \"ParentPass123!\",\n  \"deviceId\": \"pixel-8-pro\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/parent/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "parent",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "First-Time Activation Eligibility (Signup Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.result && res.result.signupToken) {",
+                  "  pm.collectionVariables.set('signupToken', res.result.signupToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"msisdn\": \"9876543210\",\n  \"actorType\": \"TEACHER\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signup"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Set One-Time Password with Signup Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"signupToken\": \"{{signupToken}}\",\n  \"newPassword\": \"BrandNewSecret123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/create-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "create-password"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"msisdn\": \"9876543210\",\n  \"purpose\": \"LOGIN\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/otp/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "otp",
+                "send"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"msisdn\": \"9876543210\",\n  \"purpose\": \"LOGIN\",\n  \"otpCode\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/otp/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "otp",
+                "verify"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"joseph.admin@stxavier.edu.in\",\n  \"mobileNo\": \"9876543210\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "forgot-password"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"msisdn\": \"9876543210\",\n  \"otpCode\": \"123456\",\n  \"newPassword\": \"SuperSecurePass@2026\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "reset-password"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Change Password (Authenticated)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"oldPassword\": \"SecureAdminPass123!\",\n  \"newPassword\": \"EvenMoreSecure123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "change-password"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Academic Setup & Lifecycle",
+      "item": [
+        {
+          "name": "Get All Academic Years",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/academic/academic-years",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic",
+                "academic-years"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Current Active Academic Year",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.result && res.result.id) {",
+                  "  pm.collectionVariables.set('academicYearId', res.result.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/academic/academic-years/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic",
+                "academic-years",
+                "active"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Academic Year Session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.result && res.result.id) {",
+                  "  pm.collectionVariables.set('academicYearId', res.result.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"2026-2027\",\n  \"startDate\": \"2026-04-01T00:00:00.000Z\",\n  \"endDate\": \"2027-03-31T23:59:59.000Z\",\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/academic/academic-years",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic",
+                "academic-years"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Activate Academic Year Session",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/academic/academic-years/{{academicYearId}}/activate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic",
+                "academic-years",
+                "{{academicYearId}}",
+                "activate"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Close Academic Year Session",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/academic/academic-years/{{academicYearId}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic",
+                "academic-years",
+                "{{academicYearId}}",
+                "close"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Grades / Classes",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/academic/grades",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic",
+                "grades"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Grade Level",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.result && res.result.id) {",
+                  "  pm.collectionVariables.set('gradeId', res.result.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Grade 10\",\n  \"sequenceOrder\": 10\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/academic/grades",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic",
+                "grades"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Sections",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/academic/sections?academicYearId={{academicYearId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic",
+                "sections"
+              ],
+              "query": [
+                {
+                  "key": "academicYearId",
+                  "value": "{{academicYearId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Section (Anchor Entity)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.result && res.result.id) {",
+                  "  pm.collectionVariables.set('sectionId', res.result.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gradeId\": \"{{gradeId}}\",\n  \"academicYearId\": \"{{academicYearId}}\",\n  \"name\": \"Section A\",\n  \"capacity\": 45\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/academic/sections",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic",
+                "sections"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Assign Homeroom Class Teacher",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/academic/sections/{{sectionId}}/class-teacher?teacherId={{teacherId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic",
+                "sections",
+                "{{sectionId}}",
+                "class-teacher"
+              ],
+              "query": [
+                {
+                  "key": "teacherId",
+                  "value": "{{teacherId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Subject Types",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/academic/subject-types",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic",
+                "subject-types"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Subject Type",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Core Academic\",\n  \"code\": \"CORE\",\n  \"description\": \"Mandatory core subjects\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/academic/subject-types",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic",
+                "subject-types"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Subjects",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/academic/subjects",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic",
+                "subjects"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Subject",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.result && res.result.id) {",
+                  "  pm.collectionVariables.set('subjectId', res.result.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mathematics\",\n  \"code\": \"MATH-10\",\n  \"subjectTypeId\": \"subject-type-uuid\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/academic/subjects",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic",
+                "subjects"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Map Subjects to Section",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sectionId\": \"{{sectionId}}\",\n  \"subjectIds\": [\"{{subjectId}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/academic/subjects/map-to-section",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic",
+                "subjects",
+                "map-to-section"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Assign Subject Teacher to Section",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sectionId\": \"{{sectionId}}\",\n  \"subjectId\": \"{{subjectId}}\",\n  \"teacherId\": \"{{teacherId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/academic/subjects/assign-teacher",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic",
+                "subjects",
+                "assign-teacher"
+              ]
+            }
+          }
+        },
+        {
+          "name": "End-of-Year Rollover Structure",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/academic/rollover?fromAcademicYearId={{academicYearId}}&toAcademicYearId=destination-year-uuid",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic",
+                "rollover"
+              ],
+              "query": [
+                {
+                  "key": "fromAcademicYearId",
+                  "value": "{{academicYearId}}"
+                },
+                {
+                  "key": "toAcademicYearId",
+                  "value": "destination-year-uuid"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Batch Promote Students (Step 4 Rollover)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"academicYearId\": \"{{academicYearId}}\",\n  \"promotions\": [\n    {\n      \"studentId\": \"{{studentId}}\",\n      \"destinationSectionId\": \"{{sectionId}}\",\n      \"rollNo\": 1,\n      \"status\": \"PROMOTED\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/academic/progression/batch-promote",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic",
+                "progression",
+                "batch-promote"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Student Historical Progression Chain",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/academic/students/{{studentId}}/enrollment-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic",
+                "students",
+                "{{studentId}}",
+                "enrollment-history"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Onboarding & Directory",
+      "item": [
+        {
+          "name": "Atomic Student Onboarding",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.result && res.result.student && res.result.student.id) {",
+                  "  pm.collectionVariables.set('studentId', res.result.student.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"student\": {\n    \"studentCode\": \"STU-2026-001\",\n    \"name\": \"Aarav Sharma\",\n    \"email\": \"aarav.sharma@gmail.com\",\n    \"phone\": \"9876543211\",\n    \"dob\": \"2012-05-15T00:00:00.000Z\",\n    \"bloodGroup\": \"O+\"\n  },\n  \"sectionId\": \"{{sectionId}}\",\n  \"rollNo\": 1,\n  \"guardian\": {\n    \"name\": \"Rajesh Sharma\",\n    \"msisdn\": \"9876543210\",\n    \"relation\": \"FATHER\",\n    \"email\": \"rajesh.sharma@gmail.com\",\n    \"isPrimary\": true\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/onboarding/students",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "onboarding",
+                "students"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Bulk CSV Students Onboard (REQUIRES_NEW)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "students_sample.csv"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/onboarding/students/bulk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "onboarding",
+                "students",
+                "bulk"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Single Teacher Onboarding",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.result && res.result.id) {",
+                  "  pm.collectionVariables.set('teacherId', res.result.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeCode\": \"EMP1001\",\n  \"name\": \"Prof. Robert D'Souza\",\n  \"loginMsisdn\": \"9876543220\",\n  \"email\": \"robert.dsouza@stxavier.edu.in\",\n  \"designation\": \"Senior Mathematics Faculty\",\n  \"dateOfJoining\": \"2024-06-01T00:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/onboarding/teachers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "onboarding",
+                "teachers"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Bulk CSV Teachers Onboard (REQUIRES_NEW)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "teachers_sample.csv"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/onboarding/teachers/bulk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "onboarding",
+                "teachers",
+                "bulk"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All School Teachers",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/teachers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "teachers"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Teachers of Section (Homeroom + Subjects)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/teachers/section/{{sectionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "teachers",
+                "section",
+                "{{sectionId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Single Teacher by ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/teachers/{{teacherId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "teachers",
+                "{{teacherId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Teacher (Full)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dr. Anita Sharma\",\n  \"email\": \"anita.sharma@schoolerp.com\",\n  \"loginMsisdn\": \"9876543220\",\n  \"designation\": \"Senior Faculty - Mathematics\",\n  \"gender\": \"FEMALE\",\n  \"dateOfBirth\": \"1988-06-15\",\n  \"address\": \"456 Professors Enclave, New Delhi\",\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/teachers/{{teacherId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "teachers",
+                "{{teacherId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Teacher (Partial)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"designation\": \"Head of Mathematics Department\",\n  \"address\": \"Flat 101, Faculty Quarters, Campus\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/teachers/{{teacherId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "teachers",
+                "{{teacherId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Students (Directory & Search)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/students?search=Aarav&limit=50&offset=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "students"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "Aarav"
+                },
+                {
+                  "key": "sectionId",
+                  "value": "{{sectionId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Single Student by ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{studentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "students",
+                "{{studentId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Student (Full)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Aarav K. Sharma\",\n  \"email\": \"aarav.k@student.com\",\n  \"phone\": \"9876543211\",\n  \"dob\": \"2012-05-15\",\n  \"bloodGroup\": \"O+\",\n  \"address\": \"Flat 302, Green Valley Apartments, Delhi\",\n  \"previousSchool\": \"Delhi Public School\",\n  \"rollNo\": 12,\n  \"parentName\": \"Rajesh Kumar Sharma\",\n  \"parentEmail\": \"rajesh.k@parent.com\",\n  \"guardianOccupation\": \"Senior Director\",\n  \"guardianAddress\": \"Flat 302, Green Valley Apartments, Delhi\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{studentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "students",
+                "{{studentId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Student (Partial)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rollNo\": 15,\n  \"bloodGroup\": \"O+\",\n  \"address\": \"House 45, Sector 12, Rohini, Delhi\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{studentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "students",
+                "{{studentId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Attendance Engine",
+      "item": [
+        {
+          "name": "Record Daily Homeroom Attendance (Triggers Parent Alert on ABSENT)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sectionId\": \"{{sectionId}}\",\n  \"date\": \"{{currentDate}}\",\n  \"records\": [\n    {\n      \"studentId\": \"{{studentId}}\",\n      \"status\": \"ABSENT\",\n      \"remarks\": \"Fever - unexcused morning homeroom\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/attendance/daily",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "attendance",
+                "daily"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Record Period / Subject-Wise Attendance",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sectionId\": \"{{sectionId}}\",\n  \"subjectId\": \"{{subjectId}}\",\n  \"date\": \"{{currentDate}}\",\n  \"records\": [\n    {\n      \"studentId\": \"{{studentId}}\",\n      \"status\": \"PRESENT\",\n      \"remarks\": \"Lecture slot 2\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/attendance/subject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "attendance",
+                "subject"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Section Daily Attendance",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/attendance/sections/{{sectionId}}?date={{currentDate}}&attendanceType=DAILY_HOMEROOM",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "attendance",
+                "sections",
+                "{{sectionId}}"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{currentDate}}"
+                },
+                {
+                  "key": "attendanceType",
+                  "value": "DAILY_HOMEROOM"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Student Monthly Attendance & Exam Eligibility",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/attendance/students/{{studentId}}/summary?yearMonth={{currentYearMonth}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "attendance",
+                "students",
+                "{{studentId}}",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "yearMonth",
+                  "value": "{{currentYearMonth}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff Check-In (Biometric/RFID/Manual)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teacherId\": \"{{teacherId}}\",\n  \"source\": \"BIOMETRIC\",\n  \"remarks\": \"Main gate scanner 1\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/attendance/staff/check-in",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "attendance",
+                "staff",
+                "check-in"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff Check-Out (Auto Half-Day / Overtime Calculation)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teacherId\": \"{{teacherId}}\",\n  \"source\": \"BIOMETRIC\",\n  \"remarks\": \"Main gate checkout scanner\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/attendance/staff/check-out",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "attendance",
+                "staff",
+                "check-out"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Staff Attendance Records",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/attendance/staff?yearMonth={{currentYearMonth}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "attendance",
+                "staff"
+              ],
+              "query": [
+                {
+                  "key": "yearMonth",
+                  "value": "{{currentYearMonth}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Communication Hub & Broadcasts",
+      "item": [
+        {
+          "name": "Send Multi-Channel Broadcast",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"channel\": \"SMS\",\n  \"sectionIds\": [\"{{sectionId}}\"],\n  \"messageBody\": \"Notice: Annual Sports Day rehearsal scheduled for Monday 9:00 AM.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/broadcast/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "broadcast",
+                "send"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send Templated Broadcast (e.g. FEE_REMINDER)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"channel\": \"SMS\",\n  \"templateCode\": \"FEE_REMINDER\",\n  \"templateVariables\": {\n    \"amount\": \"450.00\",\n    \"studentName\": \"Aarav Sharma\",\n    \"dueDate\": \"2026-11-15\"\n  },\n  \"directRecipients\": [\n    {\n      \"phone\": \"9876543210\",\n      \"name\": \"Rajesh Sharma\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/broadcast/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "broadcast",
+                "send"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Broadcast History",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/broadcast/list",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "broadcast",
+                "list"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Pre-Approved Message Templates",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/broadcast/templates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "broadcast",
+                "templates"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Message Template",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Exam Result Declaration\",\n  \"code\": \"EXAM_RESULT\",\n  \"channel\": \"SMS\",\n  \"template\": \"Dear Parent, Term 1 exam results for {{studentName}} are now published. Check the portal.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/broadcast/templates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "broadcast",
+                "templates"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Assign Monthly Teacher Broadcast Quota",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teacherId\": \"{{teacherId}}\",\n  \"channel\": \"SMS\",\n  \"quotaLimit\": 200,\n  \"yearMonth\": \"{{currentYearMonth}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/broadcast/quotas/assign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "broadcast",
+                "quotas",
+                "assign"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Teacher Broadcast Quota & Usage",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/broadcast/quotas/teacher/{{teacherId}}?yearMonth={{currentYearMonth}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "broadcast",
+                "quotas",
+                "teacher",
+                "{{teacherId}}"
+              ],
+              "query": [
+                {
+                  "key": "yearMonth",
+                  "value": "{{currentYearMonth}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Fee Management & Ledger",
+      "item": [
+        {
+          "name": "Search Fee Invoices",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.result && res.result.length > 0) {",
+                  "  pm.collectionVariables.set('invoiceId', res.result[0].id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fee-invoices/search?status=PENDING&yearMonth={{currentYearMonth}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fee-invoices",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING"
+                },
+                {
+                  "key": "yearMonth",
+                  "value": "{{currentYearMonth}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Fee Components",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fee/setup/components",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fee",
+                "setup",
+                "components"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Fee Component",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tuition Fee\",\n  \"code\": \"TUITION\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/fee/setup/components",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fee",
+                "setup",
+                "components"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Section Fee Structure",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fee/setup/sections/{{sectionId}}/structure",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fee",
+                "setup",
+                "sections",
+                "{{sectionId}}",
+                "structure"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Set Section Fee Structure",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sectionId\": \"{{sectionId}}\",\n  \"items\": [\n    {\n      \"feeComponentId\": \"component-uuid\",\n      \"amount\": 350.00,\n      \"frequency\": \"MONTHLY\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/fee/setup/sections/structure",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fee",
+                "setup",
+                "sections",
+                "structure"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Late Fee Slabs",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fee/setup/late-fee-slabs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fee",
+                "setup",
+                "late-fee-slabs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Late Fee Slabs (Append-Only Effective-Dated)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slabs\": [\n    {\n      \"daysOverdueFrom\": 1,\n      \"daysOverdueTo\": 15,\n      \"amount\": 15.00\n    },\n    {\n      \"daysOverdueFrom\": 16,\n      \"daysOverdueTo\": 30,\n      \"amount\": 35.00\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/fee/setup/late-fee-slabs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fee",
+                "setup",
+                "late-fee-slabs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Bulk Payment Discount Policy",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gradeId\": \"{{gradeId}}\",\n  \"monthsCount\": 6,\n  \"discountPercentage\": 5.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/fee/setup/bulk-discount-policies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fee",
+                "setup",
+                "bulk-discount-policies"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Record Online Gateway Payment (Idempotent)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.result && res.result.id) {",
+                  "  pm.collectionVariables.set('paymentId', res.result.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"amount\": 350.00,\n  \"gatewayTxnId\": \"razorpay_order_7749127491\",\n  \"invoiceIds\": [\"{{invoiceId}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/fee/payments/gateway",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fee",
+                "payments",
+                "gateway"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Record On-Campus Cash Payment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"amount\": 350.00,\n  \"invoiceIds\": [\"{{invoiceId}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/fee/payments/manual-cash",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fee",
+                "payments",
+                "manual-cash"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Record Advance Bulk Term Payment (Applies Bulk Discount)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"invoiceIds\": [\"{{invoiceId}}\"],\n  \"mode\": \"UPI\",\n  \"gatewayTxnId\": \"upi_bulk_txn_9918237198\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/fee/payments/bulk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fee",
+                "payments",
+                "bulk"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Apply Late Fee Waiver (Immutable FeeWaiverLog)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Medical emergency documentation submitted by guardian\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/fee/invoices/{{invoiceId}}/waiver",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fee",
+                "invoices",
+                "{{invoiceId}}",
+                "waiver"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Process Refund (Non-Destructive)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 50.00,\n  \"mode\": \"CREDIT_ADJUSTMENT\",\n  \"reason\": \"Excess transport fee adjustment\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/fee/payments/{{paymentId}}/refund",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fee",
+                "payments",
+                "{{paymentId}}",
+                "refund"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. SaaS Billing & Subscriptions",
+      "item": [
+        {
+          "name": "Get All SaaS Plans",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/billing/plans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "billing",
+                "plans"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Current School Subscription",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/billing/subscription",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "billing",
+                "subscription"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Upgrade School Subscription",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planId\": \"premium-plan-uuid\",\n  \"billingCycle\": \"YEARLY\",\n  \"changeReason\": \"Campus expansion to Senior Secondary\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/billing/subscription/upgrade",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "billing",
+                "subscription",
+                "upgrade"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Super Admin Headcount Override",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"maxStudents\": 1500,\n  \"maxTeachers\": 80,\n  \"reason\": \"Special enterprise contract tier signed Q4\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/billing/schools/{{schoolId}}/subscription/override-cap",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "billing",
+                "schools",
+                "{{schoolId}}",
+                "subscription",
+                "override-cap"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Purchase Top-Up Quota Pack",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"channel\": \"SMS\",\n  \"creditsPurchased\": 5000,\n  \"costPaid\": 100.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/billing/topups",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "billing",
+                "topups"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Purchased Top-Up Packs",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/billing/topups",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "billing",
+                "topups"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Monthly Usage Ledgers",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/billing/topups/usage?channel=SMS",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "billing",
+                "topups",
+                "usage"
+              ],
+              "query": [
+                {
+                  "key": "channel",
+                  "value": "SMS"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Roles & Custom RBAC",
+      "item": [
+        {
+          "name": "Get School Custom Roles",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "roles"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create School Custom Role",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Department Coordinator\",\n  \"description\": \"Manages academic curriculum and faculty assignments\",\n  \"permissionCodes\": [\n    \"ACADEMIC_SETUP_VIEW\",\n    \"ACADEMIC_SETUP_MANAGE\",\n    \"TEACHER_VIEW\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "roles"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Assign Role to Actor",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actorType\": \"TEACHER\",\n  \"actorId\": \"{{teacherId}}\",\n  \"roleId\": \"role-uuid\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/roles/assign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "roles",
+                "assign"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Academic Sessions & Preferences",
+      "description": "Endpoints for Academic Sessions management (Super Admin lifecycle, session cloning, atomic set-current, dropdown list with ETag caching, user session preferences, and permitted quick-actions).",
+      "item": [
+        {
+          "name": "Get Academic Sessions List (Dropdown)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "X-Session-Id",
+                "value": "{{sessionId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/academic-sessions?status=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic-sessions"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "Optional filter: upcoming | current | closed"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test(\"Status code is 200 or 304\", () => {",
+                  "  pm.expect([200, 304]).to.include(pm.response.code);",
+                  "});",
+                  "if (res.result && res.result.length > 0) {",
+                  "  const current = res.result.find(s => s.isCurrent) || res.result[0];",
+                  "  pm.collectionVariables.set(\"sessionId\", current.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Upcoming Session (Super Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              },
+              {
+                "key": "X-School-Id",
+                "value": "{{schoolId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startDate\": \"2028-04-01\",\n  \"endDate\": \"2029-03-31\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/academic-sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic-sessions"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.result && res.result.id) {",
+                  "  pm.collectionVariables.set(\"sessionId\", res.result.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Session with Copy Classes/Sections/Fees (Super Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              },
+              {
+                "key": "X-School-Id",
+                "value": "{{schoolId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"2029-30 Cloned\",\n  \"startDate\": \"2029-04-01\",\n  \"endDate\": \"2030-03-31\",\n  \"copyFromSessionId\": \"{{sessionId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/academic-sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic-sessions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Academic Session (Super Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              },
+              {
+                "key": "X-School-Id",
+                "value": "{{schoolId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"2028-29 Extended\",\n  \"startDate\": \"2028-04-01\",\n  \"endDate\": \"2029-04-15\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/academic-sessions/{{sessionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic-sessions",
+                "{{sessionId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Set Session as Current (Super Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              },
+              {
+                "key": "X-School-Id",
+                "value": "{{schoolId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/academic-sessions/{{sessionId}}/set-current",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic-sessions",
+                "{{sessionId}}",
+                "set-current"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Current User Profile & Selected Session",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "X-Session-Id",
+                "value": "{{sessionId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Set User Session Preference",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"selectedSessionId\": \"{{sessionId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/me/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "me",
+                "preferences"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Permitted Quick Actions (RBAC Filtered)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/quick-actions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "me",
+                "quick-actions"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Dashboard & Analytics Widgets",
+      "description": "Individual widget-level endpoints for the Admin Dashboard Portal. Each widget has isolated caching, ETag validation, timezone-safe date computation, and role gating.",
+      "item": [
+        {
+          "name": "Get Dashboard Executive Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "X-Session-Id",
+                "value": "{{sessionId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "summary"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Staff Attendance Widget",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/staff-attendance?date=&limit=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "staff-attendance"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "",
+                  "description": "Optional date YYYY-MM-DD (defaults to server today in school timezone)"
+                },
+                {
+                  "key": "limit",
+                  "value": "5",
+                  "description": "Max records returned (default 5)"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Communication Balance Widget",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/communication-balance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "communication-balance"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Pending Actions Widget",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "X-Session-Id",
+                "value": "{{sessionId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/pending-actions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "pending-actions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Fee Trend Widget (7 Days)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/fee-trend?days=7",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "fee-trend"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "7"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Fee Trend Widget (30 Days)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/fee-trend?days=30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "fee-trend"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "30"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Calendar Events & Holidays (Range)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/calendar/events?from=2026-11-01&to=2026-11-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "calendar",
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-11-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-11-30"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Upcoming Events (Next 30 Days)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/upcoming?days=30&limit=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "upcoming"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "30"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Calendar Event or Holiday",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Annual Sports Meet 2026\",\n  \"type\": \"event\",\n  \"date\": \"2026-11-28\",\n  \"endDate\": \"2026-11-29\",\n  \"description\": \"Annual Inter-House Sports Championship\",\n  \"notifyUsers\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/calendar/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "calendar",
+                "events"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Notifications Unread Count (Bell Badge)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/unread-count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "unread-count"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

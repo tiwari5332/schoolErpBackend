@@ -5,12 +5,13 @@ import routes from './routes';
 import { requestResponseLogger } from './middleware/logger.middleware';
 import { jwtAuthFilter } from './middleware/auth.middleware';
 import { tenantInterceptor } from './middleware/tenant.middleware';
+import { resolveAcademicSession } from './middleware/session.middleware';
 import { globalErrorHandler } from './middleware/error.middleware';
 import { ApiResponse } from './utils/response';
 import { ALLOWED_ORIGINS } from './config/env';
 
 const app: Application = express();
-
+app.set('etag', false);
 app.use(helmet());
 app.use(cors({
   origin: ALLOWED_ORIGINS,
@@ -23,6 +24,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(requestResponseLogger);
 app.use(jwtAuthFilter);
 app.use(tenantInterceptor);
+app.use(resolveAcademicSession);
 
 // Public Root & Health Check
 app.get('/', (req, res) => ApiResponse.success(res, { app: 'School ERP Node.js Backend API', status: 'RUNNING' }));

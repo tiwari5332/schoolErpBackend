@@ -79,7 +79,17 @@ export const hasPermission = (permissionCode: string) => {
       }
       return next(new ForbiddenError(`Missing required permission: ${permissionCode}`));
     } catch (err) {
-      return next(err);
+      next(err);
     }
   };
+};
+
+export const requireSuperAdmin = (req: ExtendedRequest, res: Response, next: NextFunction) => {
+  if (!req.user) {
+    return next(new UnauthorizedError('User unauthenticated'));
+  }
+  if (req.user.actorType !== ActorType.SUPER_ADMIN) {
+    return next(new ForbiddenError('Access restricted to Super Admin only'));
+  }
+  next();
 };

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { AuthController } from './auth.controller';
+import { MeController } from '../me/me.controller';
 
 const router = Router();
 
@@ -15,5 +16,7 @@ router.post('/reset-password', AuthController.resetPassword);
 router.post('/otp/send', AuthController.sendOtp);
 router.post('/otp/resend', AuthController.sendOtp);
 router.post('/otp/verify', AuthController.verifyOtp);
+router.get('/profile', MeController.getMe);
+router.get('/me', MeController.getMe);
 
 export default router;

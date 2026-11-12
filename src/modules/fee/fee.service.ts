@@ -217,6 +217,107 @@ export class FeeService {
     });
   }
 
+  static async recordBulkPayment(schoolId: string, data: {
+    studentId: string;
+    invoiceIds: string[];
+    mode: string;
+    gatewayTxnId?: string;
+    paidByGuardianId?: string;
+    recordedByAdminId?: string;
+  }) {
+    if (!data.invoiceIds || data.invoiceIds.length === 0) {
+      throw new BusinessRuleException('At least one invoiceId is required for bulk payment');
+    }
+
+    return db.transaction(async (client) => {
+      const studentGradeRes = await client.query(
+        `SELECT st.id, sec.grade_id
+         FROM students st
+         JOIN enrollments e ON st.id = e.student_id AND e.status = 'ACTIVE'
+         JOIN sections sec ON e.section_id = sec.id
+         WHERE st.id = $1 AND st.school_id = $2`,
+        [data.studentId, schoolId]
+      );
+      const gradeId = studentGradeRes.rows[0]?.grade_id;
+
+      const invsRes = await client.query(
+        `SELECT * FROM fee_invoices WHERE id = ANY($1::uuid[]) AND student_id = $2 ORDER BY due_date ASC`,
+        [data.invoiceIds, data.studentId]
+      );
+      const invoices = invsRes.rows;
+      if (invoices.length !== data.invoiceIds.length) {
+        throw new NotFoundError('One or more invoices not found or do not belong to the student');
+      }
+
+      const monthsCount = invoices.length;
+      const policyRes = await client.query(
+        `SELECT discount_percentage
+         FROM bulk_payment_discount_policies
+         WHERE school_id = $1
+           AND (grade_id = $2 OR grade_id IS NULL)
+           AND months_count <= $3
+           AND effective_to IS NULL
+         ORDER BY months_count DESC, grade_id ASC NULLS LAST
+         LIMIT 1`,
+        [schoolId, gradeId || null, monthsCount]
+      );
+
+      const discountPercentage = policyRes.rows[0] ? Number(policyRes.rows[0].discount_percentage) : 0;
+
+      let totalCalculatedPayment = 0;
+      const invoiceAllocations: Array<{ invoice: any; discount: number; amountToPay: number }> = [];
+
+      for (const inv of invoices) {
+        const balance = Number(inv.balance);
+        const discount = Number(((balance * discountPercentage) / 100).toFixed(2));
+        const amountToPay = balance - discount;
+        totalCalculatedPayment += amountToPay;
+        invoiceAllocations.push({ invoice: inv, discount, amountToPay });
+      }
+
+      const paymentRes = await client.query(
+        `INSERT INTO payments (id, student_id, amount, mode, gateway_txn_id, paid_by_guardian_id, recorded_by_admin_id, status)
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, 'SUCCESS')
+         RETURNING *`,
+        [
+          data.studentId,
+          totalCalculatedPayment,
+          data.mode || 'UPI',
+          data.gatewayTxnId || null,
+          data.paidByGuardianId || null,
+          data.recordedByAdminId || null,
+        ]
+      );
+      const payment = paymentRes.rows[0];
+
+      for (const alloc of invoiceAllocations) {
+        await client.query(
+          `INSERT INTO payment_allocations (id, payment_id, fee_invoice_id, amount)
+           VALUES (gen_random_uuid(), $1, $2, $3)`,
+          [payment.id, alloc.invoice.id, alloc.amountToPay]
+        );
+
+        const newDiscount = Number(alloc.invoice.discount_amount) + alloc.discount;
+        const newPaid = Number(alloc.invoice.paid_amount) + alloc.amountToPay;
+
+        await client.query(
+          `UPDATE fee_invoices
+           SET discount_amount = $1, paid_amount = $2, balance = 0, status = 'PAID'
+           WHERE id = $3`,
+          [newDiscount, newPaid, alloc.invoice.id]
+        );
+      }
+
+      return {
+        payment,
+        monthsCount,
+        discountPercentageApplied: discountPercentage,
+        totalPaid: totalCalculatedPayment,
+        settledInvoicesCount: invoices.length,
+      };
+    });
+  }
+
   static async applyFeeWaiver(invoiceId: string, adminId: string, reason: string) {
     const invRes = await db.query(`SELECT * FROM fee_invoices WHERE id = $1`, [invoiceId]);
     const invoice = invRes.rows[0];

@@ -191,7 +191,7 @@ export class OnboardingService {
     );
     const latestEmployeeCode = latestRes.rows[0]?.employee_code;
     const employeeCodeSuffix = latestEmployeeCode?.split('-') ?? null;
-    const nextEmployeeCode = employeeCodeSuffix && employeeCodeSuffix.length >= 3 ? `${employeeCodeSuffix[0]}-${employeeCodeSuffix[1]}-${String(parseInt(employeeCodeSuffix[2]) + 1).padStart(4, "0")}` : (data.employeeCode || '1');
+    const nextEmployeeCode = data.employeeCode || (employeeCodeSuffix && employeeCodeSuffix.length >= 3 ? `${employeeCodeSuffix[0]}-${employeeCodeSuffix[1]}-${String(parseInt(employeeCodeSuffix[2]) + 1).padStart(4, "0")}` : '1');
 
     await db.query(
       `INSERT INTO teachers (id, school_id, employee_code, name, email, login_msisdn, dob, gender, address)
@@ -209,7 +209,7 @@ export class OnboardingService {
     );
 
     await db.query(
-      `INSERT INTO employee_employment (id, school_id, employee_id, designation, joining_Date, employeement_type, status)
+      `INSERT INTO employee_employment (id, school_id, employee_id, designation, "joining_Date", employeement_type, status)
        VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'ACTIVE')`,
       [
         schoolId,

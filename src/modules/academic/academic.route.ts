@@ -51,8 +51,10 @@ router.post('/sections', hasPermission(PermissionCode.ACADEMIC_SETUP_MANAGE), Ac
 router.put('/sections/:id', hasPermission(PermissionCode.ACADEMIC_SETUP_MANAGE), AcademicController.updateSection);
 router.patch('/sections/:id/class-teacher', hasPermission(PermissionCode.ACADEMIC_SETUP_MANAGE), AcademicController.setClassTeacher);
 
-// Rollover
+// Rollover & Student Progression (HLD Section 7.2 - 7.4)
 router.post('/rollover', hasPermission(PermissionCode.ACADEMIC_SETUP_MANAGE), AcademicController.rollover);
+router.post('/progression/batch-promote', hasPermission(PermissionCode.ACADEMIC_SETUP_MANAGE), AcademicController.batchPromote);
+router.get('/students/:studentId/enrollment-history', hasPermission(PermissionCode.ACADEMIC_SETUP_VIEW), AcademicController.getEnrollmentHistory);
 
 // Subjects & Subject Types
 router.get('/subjects', hasPermission(PermissionCode.ACADEMIC_SETUP_VIEW), AcademicController.getSubjects);
