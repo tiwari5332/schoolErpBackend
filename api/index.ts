@@ -1,4 +1,4 @@
-import handler from '../src/index';
+import express from 'express';
+import server from '../src/index';
 
-export default handler;
-
+export default server;

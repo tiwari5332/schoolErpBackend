@@ -1,5 +1,5 @@
-import handler, { bootstrapServer } from './server';
+import express from 'express';
+import server, { bootstrapServer } from './server';
 
 export { bootstrapServer };
-export default handler;
-
+export default server;

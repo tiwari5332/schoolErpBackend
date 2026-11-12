@@ -18,7 +18,7 @@
 - **Utilities**: `decimal.js` for financial arithmetic, `ulidx` for prefixed identifiers (`usr_`, `ten_`, `rol_`, `sub_`, `pln_`), `pino` for structured JSON logging
 - **Dual Process Model & Entrypoints**:
   - `npm start` -> `node dist/main.js` (Fastify API server on `/api/v1` via `src/main.ts`)
-  - `src/server.ts` & `src/index.ts` / `api/index.ts` -> Cached Fastify serverless entrypoint for Vercel deployment with `vercel.json` rewrite
+  - `src/server.ts` & `src/index.ts` / `api/index.ts` -> Express-wrapped Fastify serverless entrypoint for Vercel deployment with `vercel.json` rewrite
   - `npm run start:worker` -> `node dist/worker.js` (BullMQ workers & schedulers)
   - `npm run build` -> `prisma generate && tsc` (Generates Prisma Client then compiles TypeScript to `./dist`)
   - `npm test` -> Vitest unit & contract test suite

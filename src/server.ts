@@ -1,3 +1,4 @@
+import express, { Request, Response } from 'express';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import helmet from '@fastify/helmet';
@@ -87,10 +88,13 @@ export async function bootstrapServer(): Promise<NestFastifyApplication> {
   return cachedApp;
 }
 
-// Vercel Serverless Function entry point
-export default async function handler(req: any, res: any) {
+// Express app wrapper for Vercel deployment detection & serverless routing
+const server = express();
+
+server.all('*', async (req: Request, res: Response) => {
   const app = await bootstrapServer();
   const fastifyInstance = app.getHttpAdapter().getInstance();
   fastifyInstance.server.emit('request', req, res);
-}
+});
 
+export default server;
