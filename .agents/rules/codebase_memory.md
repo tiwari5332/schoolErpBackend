@@ -30,7 +30,7 @@ always_on: true
 - **Project Structure**:
   - `src/contract/`: Decorators (`@Endpoint()`), coverage checking (`ContractCoverageChecker`), generated routes/enums/fixtures.
   - `src/common/`: Domain errors (`DomainError`), response interceptors (`EnvelopeInterceptor`), filters (`GlobalExceptionFilter`), decorators (`@Public()`, `@RequirePermission()`, `@RequireRole()`, `@CurrentUser()`), guards (`AuthGuard`, `PermissionsGuard`, `SubscriptionGuard`, `SessionLockGuard`), utilities (`Clock`, `IdGenerator`, `Money`, `PaginationUtil`, `IdempotencyService`).
-  - `src/infra/`: `PrismaService`, `RedisService`, `QueueService`, `StorageService`, `TenantTx`, `TenantContext`.
+  - `src/infra/`: `PrismaService`, `RedisService`, `QueueService`, `StorageService` (serverless `/tmp` fallback for Vercel/Lambda read-only filesystem), `TenantTx`, `TenantContext`.
   - `src/modules/`: Feature modules mapping 1:1 to `api-contract.json` (health, auth, onboarding, subscription, platform, roles, users, academic, calendar, students, staff, attendance, timetable, exams, fees, communication, dashboard, reports, bulk, settings, portal) [All Phases B0 through B8 complete; 175/175 endpoints active with 100% contract coverage].
 - **Legacy Prototype**: Archived in `legacy/` (Express controllers, routes, middleware, and raw SQL queries) preserved for reference.
 - **Tenancy**: Multi-tenant database isolation via tenant helper functions and middleware (`getTenantSchoolId`, `tenantInterceptor`).

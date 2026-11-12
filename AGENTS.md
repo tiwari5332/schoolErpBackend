@@ -26,7 +26,7 @@
 - **Project Structure**:
   - `src/contract/` -> Generated contract artefacts (`routes.ts`, `enums.ts`, `fixtures.ts`, `openapi.json`, `schemas.ts`), `@Endpoint()` decorator, `ContractCoverageChecker`
   - `src/common/` -> Envelopes, exceptions, domain errors, decorators, guards, utilities (`Clock`, `IdGenerator`, `Money`, `PaginationUtil`, `IdempotencyService`)
-  - `src/infra/` -> Prisma, Redis, Queue, Storage, TenantTx context
+  - `src/infra/` -> Prisma, Redis, Queue, Storage (serverless `/tmp` fallback for Vercel/Lambda read-only root), TenantTx context
   - `src/modules/` -> Feature modules:
     - `health` -> Health checks (`/health/live`, `/health/ready`)
     - `auth` -> Authentication, refresh rotation with reuse detection, reset/change password, me, profile (`POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/me`, `POST /auth/forgot-password`, `POST /auth/reset-password`, `POST /auth/change-password`, `PUT /auth/profile`)
