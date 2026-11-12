@@ -16,8 +16,9 @@
 - **Security & Auth**: JWT access tokens (15m, signed with HMAC-SHA256), rotating opaque refresh tokens (SHA-256 hashed in DB with family reuse detection), Argon2id (`argon2`) password hashing, Helmet, CORS, Rate Limit
 - **Validation & Docs**: Zod schemas derived from `api-contract.json`, OpenAPI 3.1 served at `/docs`
 - **Utilities**: `decimal.js` for financial arithmetic, `ulidx` for prefixed identifiers (`usr_`, `ten_`, `rol_`, `sub_`, `pln_`), `pino` for structured JSON logging
-- **Dual Process Model**:
-  - `npm start` -> `node dist/main.js` (Fastify API server on `/api/v1`)
+- **Dual Process Model & Entrypoints**:
+  - `npm start` -> `node dist/main.js` (Fastify API server on `/api/v1` via `src/main.ts`)
+  - `src/server.ts` & `src/index.ts` / `api/index.ts` -> Cached Fastify serverless entrypoint for Vercel deployment with `vercel.json` rewrite
   - `npm run start:worker` -> `node dist/worker.js` (BullMQ workers & schedulers)
   - `npm run build` -> `prisma generate && tsc` (Generates Prisma Client then compiles TypeScript to `./dist`)
   - `npm test` -> Vitest unit & contract test suite

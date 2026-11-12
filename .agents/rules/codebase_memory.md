@@ -23,6 +23,7 @@ always_on: true
 - **Contract Source of Truth**: `api-contract.json` (175 endpoints across 16 modules). Generated artefacts in `src/contract/generated/`: `routes.ts`, `enums.ts`, `fixtures.ts`, `openapi.json`, `schemas.ts`.
 - **Runtime Entrypoints**:
   - `src/main.ts`: Fastify HTTP API server listening on `/api/v1` with Helmet, CORS, Rate Limit, and Swagger UI at `/docs`.
+  - `src/server.ts`, `src/index.ts`, `api/index.ts`: Cached Fastify application instance and request handler for Vercel Serverless deployments, routed via `vercel.json`.
   - `src/worker.ts`: BullMQ background worker process for imports, exports, notifications, reminders, outbox relay.
   - Build script: `prisma generate && tsc` (`postinstall: prisma generate` ensures Prisma client types exist before compilation on CI/CD platforms like Vercel).
 - **Project Structure**:
