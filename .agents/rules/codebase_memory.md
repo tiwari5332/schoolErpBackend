@@ -24,6 +24,7 @@ always_on: true
 - **Runtime Entrypoints**:
   - `src/main.ts`: Fastify HTTP API server listening on `/api/v1` with Helmet, CORS, Rate Limit, and Swagger UI at `/docs`.
   - `src/worker.ts`: BullMQ background worker process for imports, exports, notifications, reminders, outbox relay.
+  - Build script: `prisma generate && tsc` (`postinstall: prisma generate` ensures Prisma client types exist before compilation on CI/CD platforms like Vercel).
 - **Project Structure**:
   - `src/contract/`: Decorators (`@Endpoint()`), coverage checking (`ContractCoverageChecker`), generated routes/enums/fixtures.
   - `src/common/`: Domain errors (`DomainError`), response interceptors (`EnvelopeInterceptor`), filters (`GlobalExceptionFilter`), decorators (`@Public()`, `@RequirePermission()`, `@RequireRole()`, `@CurrentUser()`), guards (`AuthGuard`, `PermissionsGuard`, `SubscriptionGuard`, `SessionLockGuard`), utilities (`Clock`, `IdGenerator`, `Money`, `PaginationUtil`, `IdempotencyService`).

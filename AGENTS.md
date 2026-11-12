@@ -19,7 +19,7 @@
 - **Dual Process Model**:
   - `npm start` -> `node dist/main.js` (Fastify API server on `/api/v1`)
   - `npm run start:worker` -> `node dist/worker.js` (BullMQ workers & schedulers)
-  - `npm run build` -> Compiles TypeScript to `./dist`
+  - `npm run build` -> `prisma generate && tsc` (Generates Prisma Client then compiles TypeScript to `./dist`)
   - `npm test` -> Vitest unit & contract test suite
 - **Project Structure**:
   - `src/contract/` -> Generated contract artefacts (`routes.ts`, `enums.ts`, `fixtures.ts`, `openapi.json`, `schemas.ts`), `@Endpoint()` decorator, `ContractCoverageChecker`
